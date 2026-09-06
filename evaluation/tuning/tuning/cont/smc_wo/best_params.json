@@ -1,0 +1,16 @@
+{
+  "lam": 3.0,
+  "k": 6.0,
+  "phi": 0.806,
+  "lam_x": 0.0,
+  "k_d": 0.5,
+  "wall_margin": 0.12,
+  "override_gain": 0.5,
+  "sigma_dead_zone": 0.0,
+  "sensor_offset": 0.0,
+  "_hw_sensor_offset": -0.007,
+  "_hw_sensor_offset_note": "Hardware rig sensor calibration (result dir offset-0.0070). Sim uses 0.0; H3 shows offset is essential on HW (52pp drop without it) but unneeded in sim.",
+  "Ts": 0.05,
+  "variant": "basic_wo",
+  "tuned_on": "cont"
+}

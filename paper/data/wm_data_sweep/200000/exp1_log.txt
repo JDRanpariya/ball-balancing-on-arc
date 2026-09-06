@@ -1,0 +1,22 @@
+============================================================
+  EXP 1: Short-Horizon Open-Loop Prediction
+============================================================
+
+Loading dataset...
+  Dataset: 1,000,000 transitions (last 1M)
+  Found 100/100 centre starts (|θ| < 0.04)
+  Using 100 segments, max_h=50
+
+Loading world model...
+  WorldModelPredictor(hidden=64, layers=2, device=cpu)
+  Bare (tau=0.06)        h=50: x=0.1585 xd=0.4353 th=0.06428 thd=0.1711  (0.1s)
+  +tau=0.15              h=50: x=0.1534 xd=0.3040 th=0.06002 thd=0.1281  (0.1s)
+  +Delay (1 step)        h=50: x=0.1514 xd=0.2628 th=0.06377 thd=0.1212  (0.1s)
+  +Delay+Obs filter      h=50: x=0.1523 xd=0.2384 th=0.06323 thd=0.1149  (0.1s)
+  WorldModel (LSTM)      h=50: x=0.1061 xd=0.1238 th=0.06474 thd=0.0868  (3.0s)
+
+  Saved /home/user/projects/ball-balancing-on-arc/paper/data/sim_validation/exp1_results.npz
+  90 arrays, 5 models
+
+
+--- STDERR ---

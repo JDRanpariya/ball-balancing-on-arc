@@ -1,0 +1,11 @@
+{
+  "K": [0.0, 0.0, -19.782, -1.367],
+  "Ts": 0.05,
+  "tau_v": 0.15,
+  "plant": "velocity",
+  "variant": "pidlike_wo_no_offset",
+  "wall_margin": 0.12,
+  "override_gain": 0.5,
+  "tuned_on": "cont",
+  "note": "Deployed LQR+WO gain: PID-equivalent state feedback (Kp=19.782, Kd=1.367, matching the deployed PID controller's gains; cart-position/velocity terms zeroed). Not a DARE/CMA-ES solution - a from-scratch CMA-ES retune with the same objective used elsewhere in this paper converges to an aggressive, saturation-prone K_theta (~-31 to -35) that performs far worse on hardware (16% SR vs this gain's ~92-100%). No zero-offset correction needed (sensors recalibrated 2026-07-21)."
+}

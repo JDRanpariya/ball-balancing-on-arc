@@ -1,0 +1,14 @@
+,PD+WO,LQR+WO,SMC+WO,MPC+WO,NMPC,PPO(BZ+DR),TD3,SAC,TQC,PPO(WM),IQL,MPPI,TRPO
+PD+WO,-,n.s.,sig,n.s.,n.s.,n.s.,sig,n.s.,n.s.,n.s.,sig,n.s.,n.s.
+LQR+WO,n.s.,-,n.s.,n.s.,n.s.,sig,n.s.,n.s.,n.s.,n.s.,n.s.,sig,n.s.
+SMC+WO,sig,n.s.,-,n.s.,n.s.,sig,n.s.,n.s.,n.s.,n.s.,n.s.,sig,n.s.
+MPC+WO,n.s.,n.s.,n.s.,-,n.s.,n.s.,n.s.,n.s.,n.s.,n.s.,n.s.,sig,n.s.
+NMPC,n.s.,n.s.,n.s.,n.s.,-,n.s.,n.s.,n.s.,n.s.,n.s.,n.s.,n.s.,n.s.
+PPO(BZ+DR),n.s.,sig,sig,n.s.,n.s.,-,sig,sig,sig,n.s.,sig,n.s.,n.s.
+TD3,sig,n.s.,n.s.,n.s.,n.s.,sig,-,n.s.,n.s.,n.s.,n.s.,sig,n.s.
+SAC,n.s.,n.s.,n.s.,n.s.,n.s.,sig,n.s.,-,n.s.,n.s.,n.s.,sig,n.s.
+TQC,n.s.,n.s.,n.s.,n.s.,n.s.,sig,n.s.,n.s.,-,n.s.,n.s.,sig,n.s.
+PPO(WM),n.s.,n.s.,n.s.,n.s.,n.s.,n.s.,n.s.,n.s.,n.s.,-,n.s.,sig,n.s.
+IQL,sig,n.s.,n.s.,n.s.,n.s.,sig,n.s.,n.s.,n.s.,n.s.,-,sig,n.s.
+MPPI,n.s.,sig,sig,sig,n.s.,n.s.,sig,sig,sig,sig,sig,-,sig
+TRPO,n.s.,n.s.,n.s.,n.s.,n.s.,n.s.,n.s.,n.s.,n.s.,n.s.,n.s.,sig,-

@@ -1,0 +1,313 @@
+\section{Mathematical Model}
+\label{appendix:dynamics}
+This section derives the full nonlinear dynamics of the ball-on-arc system. The ball rolls on a convex arc with a central concave dip. The dip makes the equilibrium locally stable and lightly damped, a shallow restoring well, rather than open-loop unstable as in the classical ball-and-beam system. The well is narrow, however: with the parameters of Table~\ref{tab:sys_params}, gravity restores the ball only within about $0.0115$\,rad of center and beyond that the convex arc dominates and rolls the ball away. We use the Euler-Lagrange method under a pure-rolling assumption, accounting for both translational and rotational motion of the ball. The base ball-and-arc formulation follows~\cite{ho2010smc}; we extend it with the central concave dip (the $d\,e^{-k\theta^2}$ term below), rolling and viscous friction, and a velocity-input actuator model (Section~\ref{sec:velocity_input}).
+
+\subsection{Coordinates and Kinematics}
+
+We define the generalized coordinates as $x$ (cart position) and $\theta$ (ball angle measured from the arc's vertical centerline, positive to the right), consistent with the platform schematic in the main paper. The ball position relative to the cart is
+\begin{equation}
+X_{\mathrm{rel}} = R \sin\theta, \quad
+Y_{\mathrm{rel}} = R \cos\theta - d e^{-k\theta^2},
+\end{equation}
+where $R$ is the arc radius, $d$ is the dip depth, and $k = R^2/(2\sigma^2)$ defines the Gaussian dip width. The term $d e^{-k\theta^2}$ represents the concave dip that lowers the surface by depth $d$ at the arc center ($\theta = 0$) and smoothly transitions to the nominal convex arc profile as $|\theta|$ increases. In inertial coordinates,
+\begin{equation}
+X = x + X_{\mathrm{rel}}, \quad Y = Y_{\mathrm{rel}}.
+\end{equation}
+
+The corresponding velocity components are
+\begin{equation}
+\label{eq:XYcoordVel}
+\dot X = \dot x + R \cos\theta \, \dot\theta, \quad
+\dot Y = (-R \sin\theta + a(\theta)) \dot\theta,
+\end{equation}
+with $a(\theta) = 2 d k \theta e^{-k\theta^2}$ capturing the velocity contribution from the dip geometry.
+
+Assuming pure rolling without slip, the ball's angular velocity is
+\begin{equation}
+\omega = \frac{R}{r} \dot\theta,
+\end{equation}
+where $r$ is the ball radius. This holonomic constraint $r \varphi = R \theta$ relates the ball's rotational angle $\varphi$ to its position along the arc.
+
+\subsection{Energy Formulation}
+
+\subsubsection{Translational Kinetic Energy}
+The cart moves along the horizontal track:
+\begin{equation}
+T_\text{cart} = \frac{1}{2} M \dot x^2.
+\end{equation}
+
+The ball contributes translational kinetic energy in both the horizontal and vertical directions:
+\begin{equation}
+T_\text{ball,trans} = \frac{1}{2} m (\dot X^2 + \dot Y^2).
+\end{equation}
+
+Using \eqref{eq:XYcoordVel}, we expand:
+\begin{equation}
+\begin{split}
+\dot X^2 + \dot Y^2 &= \dot x^2 + 2 \dot x R \cos\theta \, \dot\theta \\[2pt]
+&\quad + \bigl[ (R\cos\theta)^2 + (-R\sin\theta + a(\theta))^2 \bigr] \dot\theta^2.
+\end{split}
+\end{equation}
+
+Combining cart and ball translational contributions:
+\begin{equation}
+T_\text{trans} = \frac{1}{2}(M+m)\dot x^2 + m R \cos\theta \, \dot x \dot\theta + \frac{1}{2} m C(\theta) \dot\theta^2,
+\end{equation}
+with
+\begin{equation}
+C(\theta) = (R\cos\theta)^2 + (-R\sin\theta + a(\theta))^2.
+\end{equation}
+
+\subsubsection{Rotational Kinetic Energy}
+The ball rolls without slipping along the arc:
+\begin{equation}
+T_\text{rot} = \frac{1}{2} I \omega^2 = \frac{1}{2} I \left(\frac{R}{r}\right)^2 \dot\theta^2,
+\end{equation}
+where $I$ is the moment of inertia of the ball and $r$ its radius.
+
+\subsubsection{Effective Ball Contribution}
+Combining translational and rotational contributions along the arc:
+\begin{equation}
+C_\mathrm{eff}(\theta) = C(\theta) + \frac{I}{m} \frac{R^2}{r^2}, \quad
+T_\text{ball} = \frac{1}{2} m C_\mathrm{eff}(\theta) \dot\theta^2.
+\end{equation}
+
+\subsubsection{Total Kinetic and Potential Energy}
+\begin{equation}
+\boxed{
+T = \frac{1}{2}(M+m)\dot x^2 + m R \cos\theta \, \dot x \dot\theta + \frac{1}{2} m C_\mathrm{eff}(\theta) \dot\theta^2
+}
+\end{equation}
+\begin{equation}
+\boxed{V(\theta) = mg \big(R \cos\theta - d e^{-k\theta^2} \big).}
+\end{equation}
+
+\subsection{Equations of Motion}
+The Euler--Lagrange equation for a generalized coordinate $q_i$ with generalized force $Q_i$ is:
+\begin{equation}
+\frac{d}{dt} \left( \frac{\partial L}{\partial \dot{q}_i} \right) - \frac{\partial L}{\partial q_i} = Q_i,
+\label{eq:euler-lagrange}
+\end{equation}
+where $L = T - V$ is the Lagrangian.
+
+The derivatives used in the formulation are defined as
+\begin{equation}
+C'(\theta) = \frac{d C_\mathrm{eff}}{d\theta}, \quad
+a'(\theta) = \frac{d a(\theta)}{d\theta} = 2 d k e^{-k\theta^2} (1 - 2 k \theta^2).
+\end{equation}
+
+\paragraph{Cart coordinate $x$}  
+The horizontal force applied is $Q_x = u$. Partial derivatives of the Lagrangian:
+\begin{equation}
+\begin{split}
+\frac{\partial L}{\partial \dot{x}} &= (M+m)\dot{x} + m R \cos\theta \, \dot\theta, \\
+\frac{\partial L}{\partial x} &= 0.
+\end{split}
+\end{equation}
+
+Time derivative:
+\begin{equation}
+\begin{split}
+\frac{d}{dt} \left( \frac{\partial L}{\partial \dot{x}} \right) 
+&= (M+m)\ddot{x} + m R \left(-\sin\theta \, \dot\theta^2 + \cos\theta \, \ddot\theta \right).
+\end{split}
+\end{equation}
+
+
+The Euler--Lagrange equation gives the following:
+\begin{equation}
+\label{eq:x_final_eq}
+\boxed{(M+m)\ddot{x} - m R \sin\theta \, \dot\theta^2 + m R \cos\theta \, \ddot\theta = u.}
+\end{equation}
+
+\paragraph{Ball coordinate $\theta$}  
+The generalized force is zero, $Q_\theta = 0$. Partial derivatives of the Lagrangian are
+\begin{equation}
+\begin{split}
+\frac{\partial L}{\partial \dot{\theta}} &= m R \cos\theta \, \dot{x} + m C_\mathrm{eff}(\theta) \, \dot\theta, \\
+\frac{\partial L}{\partial \theta} &= - m R \sin\theta \, \dot{x} \dot{\theta}
+  + \tfrac{1}{2} m C_\mathrm{eff}'(\theta) \, \dot\theta^2
+  - m g \bigl(a(\theta) - R\sin\theta\bigr).
+\end{split}
+\end{equation}
+
+Time derivative:
+\begin{equation}
+\begin{split}
+\frac{d}{dt} \left( \frac{\partial L}{\partial \dot{\theta}} \right) 
+&= m R (-\sin\theta \, \dot\theta \, \dot{x} + \cos\theta \, \ddot{x}) \\[2pt]
+&\quad + m \left( C'(\theta) \dot\theta^2 + C_\mathrm{eff}(\theta) \ddot{\theta} \right).
+\end{split}
+\end{equation}
+
+The Euler--Lagrange equation simplifies to:
+\begin{equation}
+\label{eq:theta_final_eq}
+\boxed{
+R \cos\theta\,\ddot{x}
++ C_\mathrm{eff}(\theta)\,\ddot{\theta}
++ \tfrac{1}{2}C'(\theta)\dot{\theta}^2
++ g\bigl(a(\theta) - R\sin\theta\bigr) = 0
+}
+\end{equation}
+
+\subsection{Matrix Form}
+Coupled second-order dynamics from Eqs.~\eqref{eq:x_final_eq} and \eqref{eq:theta_final_eq} can be expressed compactly in matrix form:
+\begin{equation}
+\label{eq:matrix_eom}
+\begin{split}
+&\begin{bmatrix} 
+M+m & m R \cos\theta \\[1ex] 
+R \cos\theta & C_{\mathrm{eff}}(\theta)
+\end{bmatrix}
+\begin{bmatrix} \ddot x \\ \ddot\theta \end{bmatrix} = \\[4pt]
+&\qquad
+\begin{bmatrix} 
+u + m R \sin\theta \,\dot\theta^2 \\[1ex] 
+- \tfrac{1}{2} C_{\mathrm{eff}}'(\theta)\,\dot\theta^2 
+- g\big(-R \sin\theta + a(\theta)\big)
+\end{bmatrix}.
+\end{split}
+\end{equation}
+
+This matrix form makes it easier to see the coupling between the cart and ball. For controller design, we convert the system into a first-order state-space form. 
+
+\subsection{First-Order State-Space Form}
+
+To facilitate controller design and linearization, we convert the second-order dynamics in Eq.~\eqref{eq:matrix_eom} to a first-order form. We define the state vector as
+\begin{equation}
+\label{eq:state_vector}
+x = 
+\begin{bmatrix}
+x_\text{cart} \\ \dot{x}_\text{cart} \\ \theta \\ \dot{\theta}
+\end{bmatrix} \in \mathbb{R}^4, \quad
+u \in \mathbb{R}.
+\end{equation}
+
+The dynamics can then be written compactly as
+\begin{equation}
+\label{eq:first_order_dynamics}
+\dot{x} = f(x,u) =
+\begin{bmatrix}
+\dot{x}_\text{cart} \\
+\ddot{x}_\text{cart} (x, \dot{x}, \theta, \dot{\theta}, u) \\
+\dot{\theta} \\
+\ddot{\theta} (x, \dot{x}, \theta, \dot{\theta})
+\end{bmatrix},
+\end{equation}
+where $\ddot{x}_\text{cart}$ and $\ddot{\theta}$ are computed from Eq.~\eqref{eq:matrix_eom}.
+
+\paragraph{Linearization}  
+We linearize the system around an operating point $(x_0,u_0)$ using the Jacobians of $f$ with respect to the state and input:
+\begin{equation}
+\label{eq:jacobians}
+A = \left. \frac{\partial f}{\partial x} \right|_{x_0, u_0}, \quad
+B = \left. \frac{\partial f}{\partial u} \right|_{x_0, u_0}.
+\end{equation}
+These matrices form the basis for designing linear controllers.
+
+\paragraph{Discrete-Time Approximation}  
+For controllers that require discrete-time dynamics, the first-order system can be integrated over a timestep $\Delta t$ using zero-order hold (ZOH):
+\begin{equation}
+\label{eq:discrete_map}
+x_{k+1} = F(x_k, u_k) \approx x_k + \int_{t_k}^{t_k + \Delta t} f(x(t), u_k) \, dt,
+\end{equation}
+where $F$ defines the discrete-time map. 
+
+\subsection{Velocity-Input Plant Model}
+\label{sec:velocity_input}
+
+The physical platform uses a Beckhoff servo drive controlled via
+the \texttt{MC\_MoveVelocity} function block, where the controller
+commands a desired cart velocity~$v_\text{cmd}$ rather than a force.
+Internally, the drive executes a 7-phase S-curve motion profile;
+for modeling tractability, we approximate this as a first-order lag:
+\begin{equation}
+\ddot{x} = \frac{v_\text{cmd} - \dot{x}}{\tau_v},
+\qquad \tau_v = 0.15~\text{s},
+\label{eq:velocity_lag}
+\end{equation}
+where $\tau_v$ is identified empirically from open-loop
+trajectory matching between simulation and hardware
+(Appendix~\ref{appendix:simulation_validation}).
+Because $\ddot{x}$ is now a known function of state and input,
+the ball equation reduces to
+\begin{equation}
+\begin{split}
+\ddot{\theta} &= \frac{1}{C_{\mathrm{eff}}(\theta)}\Bigl[
+  -R\cos\theta\,\ddot{x}
+  - \tfrac{1}{2}C_{\mathrm{eff}}'(\theta)\dot{\theta}^2 \\
+  &\quad + g(R\sin\theta - a(\theta))
+  - Q_\mathrm{rr} - Q_\mathrm{visc}
+\Bigr],
+\end{split}
+\label{eq:ball_reduced}
+\end{equation}
+where the generalized friction terms are
+\begin{align}
+Q_\mathrm{rr}   &= \mu_\mathrm{rr}\, g\, R\cos\theta\,
+                    \operatorname{sign}(\dot\theta),
+                    \label{eq:Q_rr} \\
+Q_\mathrm{visc} &= \beta_v\, \dot\theta.
+                    \label{eq:Q_visc}
+\end{align}
+with rolling-friction coefficient
+$\mu_\mathrm{rr} = 0.025$ and viscous damping
+$\beta_v = 0.009~\text{m}^2/\text{s}$. These two are nominal estimates
+rather than precisely identified values; domain randomization samples
+them over $[0.010, 0.040]$ and $[0.003, 0.015]$ respectively during
+training. In simulation the $\operatorname{sign}(\dot\theta)$ in
+Eq.~\eqref{eq:Q_rr} is replaced by a smoothed
+$\tanh(\dot\theta/\varepsilon)$ with $\varepsilon = 0.005$\,rad/s to
+avoid chattering at $\dot\theta = 0$.
+The physical parameters are taken from \texttt{balancer/core/params.py};
+the actuation limit $v_\mathrm{max}$ and the 20\,Hz control rate come from
+\texttt{balancer/hardware/constants.py}. All are summarized in
+Table~\ref{tab:sys_params}.
+
+\begin{table}[!tb]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\caption{Nominal system parameters.}
+\label{tab:sys_params}
+\begin{tabular}{llp{2.9cm}}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Description} \\
+\midrule
+$g$                & 9.81\,m/s$^2$  & Gravitational acceleration \\
+$R$                & 2.101\,m        & Arc radius \\
+$m$              & 0.024\,kg       & Ball mass (24\,g) \\
+$r$              & 0.009\,m        & Ball radius (9\,mm) \\
+$M$              & 0.351\,kg       & Cart mass \\
+$\tau_v$           & 0.15\,s         & Velocity-lag time constant \\
+$\mu_\mathrm{rr}$  & 0.025           & Ball rolling friction (est.) \\
+$\beta_v$          & 0.009\,m$^2$/s  & Ball viscous damping (est.) \\
+$d$                & 0.002\,m        & Dip depth (2\,mm) \\
+$\mathrm{FWHM}$    & 0.020\,m        & Dip width ($\sigma=$\,FWHM$/2.355$) \\
+$v_\mathrm{max}$   & 0.9\,m/s        & Cart velocity-command limit \\
+$T_s$              & 0.05\,s         & Control timestep (20\,Hz) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All reported controllers and the benchmark environments use this
+velocity-input plant; the drive's underlying jerk-limited S-curve
+profile is also implemented and drives the development-regime results
+(Appendix~\ref{appendix:rl_fairness}), while the force-input formulation
+(Eq.~\eqref{eq:matrix_eom}) is retained for derivation
+reference only.  Both the linearized velocity-input system
+(used by LQR/MPC) and the nonlinear RK4 integration
+(used by NMPC) incorporate $\tau_v$ explicitly.
+
+\subsection{Remarks}
+We treat the ball as a solid spherical bead, so its moment of inertia is
+$I = \tfrac{2}{5} m r^2$. LQR and MPC use this model linearized around the arc
+center, while NMPC and the training simulator integrate the full nonlinear
+form; in either case the model carries the coupling between cart and ball
+along with the effect of the central concave dip.
+
+
+% ============================================================
+%  SECTION IV - EXPERIMENTS
+% ============================================================

@@ -1,0 +1,7 @@
+- _target_ : gymnasium.wrappers.TimeLimit
+  max_episode_steps: 600
+#- _target_ : balancer.wrappers.observation.ParamInjectionWrapper
+#- _target_ : balancer.wrappers.observation.HistoryWrapper
+#  steps: 4
+#- _target_ : balancer.wrappers.curriculum.DynResetEpisode
+# - _target_: balancer.wrappers.logging.BalancerLogger

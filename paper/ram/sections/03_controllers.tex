@@ -1,0 +1,84 @@
+\section{The Controllers}
+\label{sec:controllers}
+
+We implemented 13 controllers (Tbl.~\ref{tab:controllers}), each meeting the platform through the same interface: it reads the current state and the physical limits, and returns a velocity command.
+Holding that interface fixed keeps the comparison on the control law.
+All numerical parameters, training configurations, and reward functions are detailed in the supplementary material.
+
+\begin{table}[t]
+\centering
+\caption{The 13 benchmarked controllers. Paradigm labels follow
+  standard taxonomy in control and RL literature. The taxonomy has two axes:
+  data/model source (analytical model, simulation, hardware logs) and
+  decision mechanism (feedback law, MPC/planning, online RL policy, offline RL policy).
+  Suffixes: WO = wall override, DR = domain randomization, BZ = blind-zone sensor model,
+  WM = learned world model.}
+\label{tab:controllers}
+\setlength{\tabcolsep}{3pt}
+\footnotesize
+\begin{tabular}{lll}
+\toprule
+\textbf{Controller} & \textbf{Data source} & \textbf{Decision mechanism} \\
+\midrule
+PD + WO        & Analytical model     & Error feedback + tuned gains \\
+LQR + WO       & Analytical model     & PD-equivalent state feedback \\
+SMC + WO       & Analytical model     & Sliding-mode feedback \\
+\midrule
+MPC + WO       & Analytical model     & Constrained QP planning \\
+NMPC           & Analytical model     & Nonlinear MPC planning \\
+\midrule
+PPO (BZ+DR)    & Simulation           & Model-free RL (on-policy) \\
+TRPO (DR)      & Simulation           & Model-free RL (on-policy) \\
+SAC (DR)       & Simulation           & Model-free RL (off-policy) \\
+TD3 (DR)       & Simulation           & Model-free RL (off-policy) \\
+TQC (DR)       & Simulation           & Model-free RL (off-policy) \\
+\midrule
+PPO (WM)       & Logged data          & RL trained in learned model \\
+MPPI           & Logged data          & Sampling MPC via learned model \\
+IQL            & Logged data          & Offline model-free RL \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Classical Control (PD, LQR, SMC)}
+
+The three classical controllers follow the standard workflow: model, tune in simulation, deploy.
+PD acts on measured position and velocity errors, LQR on the linearized dynamics, and SMC on a nonlinear sliding surface.
+We tuned PD and SMC with CMA-ES~\cite{hansen2016cma}, an evolutionary optimizer, in simulation over stratified initial conditions.
+For LQR, the CMA-ES-tuned gain does not transfer to the hardware, so we deploy a PD-equivalent gain instead; the supplement's classical-tuning appendix gives the details.
+Each law is designed around the equilibrium and carries no notion of the rail ends from Sec.~\ref{sec:system}.
+
+\noindent\textbf{The wall-override mechanism:} To give the nominal controllers a way to respect the boundary, we add a simple heuristic: when the cart approaches the rail limit, or wall, override whatever the nominal controller commands and drive away from it.
+PD, LQR, SMC, and MPC all run with this guard, denoted ``+WO'' in our results; NMPC handles the rail through its own constraint formulation and runs without it.
+
+\subsection{Predictive Control (MPC, NMPC)}
+
+Linear MPC solves a constrained quadratic program (QP) at each timestep using linearized dynamics; NMPC uses the full nonlinear model over a horizon of $N=10$ steps.
+Both were tuned with the same CMA-ES framework, in this case over cost weights and horizon parameters.
+Near the rail, linear MPC's cart-position constraint can make that QP infeasible, so the deployed MPC~(+WO) drops the constraint and falls back on the same wall override as the classical controllers.
+
+\subsection{Simulation-Trained Reinforcement Learning}
+
+We trained five RL algorithms, PPO~\cite{schulman2017proximal}, TD3, TQC, SAC, and TRPO, in simulation with domain randomization.
+The training environment includes the velocity interface of Sec.~\ref{sec:system}, so each policy trains against the servo dynamics the hardware presents; all use small two-layer MLPs, with architectures and training budgets in the supplement.
+One variant, PPO (BZ+DR), also models the sensor blind zone of Sec.~\ref{sec:system} during training: with the simulated readings freezing near the arc edges as the real ones do, the policy learns to act cautiously while its inputs may already be stale.
+We ablate this blind-zone model on PPO alone, comparing PPO with the sensor model against PPO without it (ablations in the supplementary material).
+
+\subsection{Hardware-Data-Driven Controllers (IQL, MPPI, PPO-WM)}
+
+These three controllers all learn from real hardware data, and each puts that data to work in a different way.
+
+\noindent\textbf{Offline RL (IQL):} IQL~\cite{kostrikov2022iql} learns a policy directly from logged hardware data, requiring no simulator.
+We trained it on approximately 333,000 transitions (1,415 trials) collected from every controller we ran on hardware (MPPI, NMPC, RL, MPC, PD, LQR, SMC, and earlier offline-RL checkpoints, though not the deployed IQL policy itself).
+The dataset is mixed, 83\% successful episodes and 17\% failures, and rewards are recomputed offline from the logged states.
+IQL extracts its policy conservatively, through expectile regression~\cite{kostrikov2022iql}, which keeps it clear of the distributional-shift instabilities common to other offline RL methods.
+
+\noindent\textbf{Model-based planning (MPPI):} This approach learns the system's dynamics directly from hardware data: a two-layer LSTM trained to predict state transitions from a 1M-transition random-exploration dataset.
+At runtime MPPI treats this learned model as an internal simulator.
+Every control step (50\,ms) it samples hundreds of candidate action sequences, rolls each forward through the network, and executes the first action of the cost-weighted-average sequence, replanning continuously as new data arrives.
+
+\noindent\textbf{RL in a learned world (PPO-WM):} A second variant trains a standard PPO policy inside a learned world model~\cite{hafner2020dream} rather than using it for online planning.
+The result is a lightweight network that trains and runs on CPU, with no GPU at deployment, while still drawing on dynamics learned from real data.
+MPPI and PPO-WM share the same world-model architecture but were trained on two separate 1M-transition collections; the collection behind the PPO-WM model suits RL training better, see reasons in the supplement's world-model appendix.
+
+All thirteen then meet the same evaluation protocol, defined in the next section.

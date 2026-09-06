@@ -1,0 +1,39 @@
+run_steps: 1000000
+action_type: cont
+control_period_s: 0.05
+hdf5_filename: dataset/arcball_cont_1M_calib196_148.h5
+save_every_n: 5000
+p_stick: 0.5
+vel_buffer_len: 3
+pos_buffer_len: 1
+vel_clip: 0.6
+pos_limit: 0.081
+columns:
+- prev_cart_pos
+- prev_cart_vel
+- prev_ball_pos
+- prev_ball_vel
+- prev_raw_left_mm
+- prev_raw_right_mm
+- action
+- cur_cart_pos
+- cur_cart_vel
+- cur_ball_pos
+- cur_ball_vel
+- cur_raw_left_mm
+- cur_raw_right_mm
+- reward
+- dip_reward
+system_constants:
+  arc_radius_m: 2.101
+  track_start_m: 0.2
+  track_end_m: 1.753
+  left_center_mm: 193
+  right_center_mm: 148
+  sensor_offset_rad: 0.0
+  center_threshold_rad: 0.001
+_meta:
+  source: arcball_cont_3M_calib196_148_clean.h5 (first 1M rows)
+  calibration: entry #4 (LEFT=193, RIGHT=148)
+  start_time: '2026-05-20 16:46:14'
+  host: Fraunhofer IIS hardware rig

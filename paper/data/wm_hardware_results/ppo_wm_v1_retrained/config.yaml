@@ -1,0 +1,3 @@
+controller: RLController_ppo_wm_v1_retrained
+checkpoint: evaluation/models/cont/ppo_wm_v1_retrained.zip  # relative to repo root
+training: "v1 stateful, 3M steps, CPU, reward=116.68"

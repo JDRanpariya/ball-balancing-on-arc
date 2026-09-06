@@ -1,0 +1,80 @@
+\documentclass[]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{balance}
+
+\hypersetup{
+  pdftitle={A Ball-on-Arc Benchmark: Classical and Learning-Based Control on Realistic Deployment Hardware},
+  pdfauthor={Jaydeepkumar Ranpariya; Sandipan Nath; Alexander Mattick; Georgios Kontes; Tobias Feigl; Christopher Mutschler},
+  pdfsubject={arXiv preprint}
+}
+
+\newcommand{\setupimg}{figures/system_setup.jpg}
+
+\begin{document}
+
+\title{A Ball-on-Arc Benchmark: Classical and Learning-Based Control\\on Realistic Deployment Hardware}
+
+\author{
+\IEEEauthorblockN{
+  Jaydeepkumar Ranpariya, Sandipan Nath, Alexander Mattick,\\
+  Georgios Kontes, Tobias Feigl, and Christopher Mutschler}
+\IEEEauthorblockA{
+  Fraunhofer Institute for Integrated Circuits IIS, Nuremberg, Germany}
+\IEEEauthorblockA{
+  \{jaydeepranpariya037@gmail.com, sandipan.nath@fau.de,\\
+  alexander.mattick@iis.fraunhofer.de\}}
+}
+
+%% ORCIDs: Ranpariya 0009-0000-1967-9795; Nath 0009-0008-4830-6451;
+%% Mattick 0000-0001-7805-199X; Kontes 0000-0001-7051-0960;
+%% Feigl 0000-0002-3040-3543; Mutschler 0000-0001-8108-0230.
+
+\maketitle
+
+\begin{abstract}
+Reproducibility and fair comparison of control paradigms, i.e., classical,
+predictive, and learning-based, in robotics research are widely called for,
+yet controllers from different paradigms are seldom evaluated on the same
+physical system under the same conditions. The aim of this article is to
+provide a reproducible benchmark for comparing control paradigms on realistic
+robot hardware. We built a compact ball-on-arc balancer that pairs an
+industrial servo and motion controller with commodity sensors. We deliberately
+keep real-world imperfections that a deployed controller must deal with to
+enable a solid and realistic evaluation of controllers. We tested 13
+controllers across four families under one common protocol. The hardware and
+setup, the implemented controllers, and all trial records are publicly
+available to foster reproduction of the results and to serve as a benchmark in
+robotics research.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Robotics benchmarking, reinforcement learning, model predictive control,
+ball balancing, sim-to-real transfer, learned dynamics models,
+reproducible research
+\end{IEEEkeywords}
+
+\input{sections/01_introduction}
+\input{sections/02b_related_work}
+\input{sections/02_system}
+\input{sections/03_controllers}
+\input{sections/04_experiments}
+\input{sections/05_results}
+\input{sections/06_discussion_and_takeaways}
+
+\section*{Acknowledgment}
+The authors thank the Fraunhofer IIS team for hardware support.
+
+\bibliographystyle{IEEEtran}
+\bibliography{bibliography}
+
+\end{document}

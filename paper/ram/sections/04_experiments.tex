@@ -1,0 +1,49 @@
+\section{Experimental Protocol}
+\label{sec:experiments}
+
+Each of the 13 controllers runs on the physical platform under the same conditions: the sensors, actuator, and 20\,Hz control loop detailed in Sec.~\ref{sec:system}, under the stratified initial-condition schedule below.
+
+\subsection{Stratified Initial Conditions}
+
+To probe different failure modes, we stratify the 50 trials by difficulty.
+Difficulty is set mainly by the cart's starting position, and the two at-wall strata split further by which side of the cart the ball starts on.
+
+\noindent\textbf{Center} (10 trials): cart near center ($\pm$0.10\,m), maximum maneuverability in both directions.
+\noindent\textbf{Mid-rail} (16 trials): cart at $\pm$0.40\,m, with asymmetric maneuvering space.
+\noindent\textbf{Near-wall} (14 trials): cart at $\pm$0.65\,m, leaving only 0.13\,m of clearance to the boundary.
+\noindent\textbf{At-wall-opposite} (5 trials): cart at the boundary ($\pm$0.78\,m), ball displaced to the side away from the wall.
+Getting under the ball drives the cart back toward open rail, so the correction has room to run; the easier of the two at-wall cases.
+In this stratum the cart did not always reach the physical limit, so the achieved start was not uniform across controllers (supplement, Evaluation Protocol); we therefore read it as a recovery-speed check rather than an equal-condition comparison.
+\noindent\textbf{At-wall-same} (5 trials): cart at the boundary ($\pm$0.78\,m), ball displaced to the same side as the cart.
+Getting under the ball means driving further into the wall, so this stratum stresses controllers that lack explicit constraint handling; the harder of the two at-wall cases.
+
+
+\subsection{Success Criterion}
+
+A trial succeeds when the ball angle stays within $\pm$0.01\,rad continuously for 1.0\,s; a trial that runs past 30\,s is a failure.
+At the arc radius $R = 2.101$\,m of Sec.~\ref{sec:system}, $\pm$0.01\,rad is about $\pm$21\,mm of arc, against sensor readings that run about 13\,mm peak-to-peak.
+
+\subsection{Metrics}
+
+We report success rate (SR) with 95\% Wilson score intervals, median settling time with interquartile range over the successful trials, and RMS control effort (the root-mean-square commanded cart velocity in m/s, saturated at the $\pm 0.9$~m/s axis limit that the actuator enforces, then averaged over all trials).
+For pairwise comparisons we use the Mann-Whitney rank test on the successful-trial settling times, with Bonferroni correction across all 78 controller pairs; a rank test suits these skewed distributions better than a mean-based $t$-test.
+Success-rate differences are compared with Fisher's exact test in the same Bonferroni family.
+We use 50 trials per controller as a balance between confidence-interval width and hardware-time budget: each trial runs on the physical rig, up to 30\,s of balancing plus an automated reset that jolts the cart to reposition the ball for the next trial.
+Settling statistics are computed over successful trials only, so cross-controller settling comparisons slightly favor the less-reliable controllers, whose failed (and typically hardest) trials are excluded; success rate is therefore reported separately and never folded into the settling comparison.
+
+\subsection{A Note on Statistical Power}
+
+With 50 trials per controller, the benchmark resolves only large differences in success rate, and its pairwise tests hold the family-wise error rate across all 78 controller pairs.
+At that corrected level, a Fisher comparison reaches 80\% power only for success-rate gaps of roughly 30 percentage points near the top of the range, widening to about 40 points near 50\%; for a single uncorrected comparison the figures are closer to 20 and 30 points.
+Gaps of a few points sit below this resolution.
+
+The confidence intervals show the same limit directly.
+A controller that succeeds in all 50 of its trials still carries a 95\% Wilson interval of $[93, 100]$, and one that succeeds in 40 carries $[67, 89]$, so any single success rate is uncertain by several points on each side.
+
+We chose 50 trials rather than the more common 10 or 20 because the interval narrows substantially with sample size: at ten trials the interval on a 90\% success rate is about twice as wide as at fifty.
+Collecting the full 650-trial dataset (13 controllers $\times$ 50 trials) took several sessions at the rig, on top of thousands of development and screening trials.
+
+\subsection{Auxiliary Studies}
+
+A few auxiliary studies use the same platform and protocol and are reported where they inform a finding: the wall-override ablations (each classical controller with and without the boundary rule), the PPO domain-randomization and blind-zone ablations, an open-loop sweep of world-model accuracy against dataset size, and a short on-hardware fine-tuning trial.
+The supplement gives their full protocols.

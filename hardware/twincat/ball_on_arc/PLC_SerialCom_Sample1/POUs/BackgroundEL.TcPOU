@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="BackgroundEL" Id="{9a20473f-0d3f-4584-b429-33e10587a848}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM BackgroundEL
+VAR
+	(* SerialLineControl instance that services the EL6002 RS-232 terminal.
+	   Host PC is wired to channel 2 (X2) of the EL6002. The variable name
+	   is kept as fbEL6001Ctrl for historical reasons - it drives an EL6002
+	   in 22-byte process-image mode. *)
+	fbEL6001Ctrl		: SerialLineControl;
+	bEL6001CtrlError	: BOOL;
+	eEL6001CtrlErrorID	: ComError_t;
+
+	(* Process-image variables linked to the EL6002 channel 2 in the
+	   TwinCAT System Manager. The EL6inData22B / EL6outData22B structs
+	   apply to both EL6001 and EL6002 in 22-byte mode. *)
+	stIn_EL6001 AT %I*	: EL6inData22B;
+	stOut_EL6001 AT %Q*	: EL6outData22B;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*
+SerialLineControl must be called every PLC cycle. We run it from the fast
+task (PlcTask_Fast) so the RX buffer cannot overrun at 115200 baud; the 22-byte
+process image refreshes every cycle, so <=1 ms is recommended.
+*)
+
+(* Background communication with the EL6002 terminal (channel 2). *)
+fbEL6001Ctrl(
+	Mode:= SERIALLINEMODE_EL6_22B, 
+	pComIn:= ADR(stIn_EL6001), 
+	pComOut:= ADR(stOut_EL6001), 
+	SizeComIn:= SIZEOF(stIn_EL6001), 
+	Error=> , 
+	ErrorID=> , 
+	TxBuffer:= TxBufferEL, 
+	RxBuffer:= RxBufferEL );
+IF fbEL6001Ctrl.Error THEN
+	bEL6001CtrlError := TRUE;
+	eEL6001CtrlErrorID := fbEL6001Ctrl.ErrorID;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="BackgroundEL">
+      <LineId Id="3" Count="21" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

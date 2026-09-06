@@ -1,0 +1,6 @@
+# configs/algo/recurrent_ppo.yaml
+
+_target_: sb3_contrib.RecurrentPPO
+policy: "MlpLstmPolicy"
+device: "cpu"
+ent_coef: 0.01

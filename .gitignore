@@ -1,0 +1,93 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+*.eggs/
+
+# Environment
+.env
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+*:Zone.Identifier
+
+# Training artifacts
+training/runs/*/wandb/
+training/runs/*/tb/
+training/offline_rl/checkpoints/
+training/offline_rl/d3rlpy_logs/
+training/offline_rl/wandb/
+training/offline_rl/runs/
+*.log
+
+# Evaluation artifacts
+evaluation/logs/
+evaluation/recordings/
+evaluation/figures/
+
+# Website
+website/node_modules/
+website/dist/
+
+# LLM / AI tool artifacts
+AGENTS.md
+repomix-output.xml
+
+# Raw phone recordings (large, not in repo)
+evaluation/recordings/*.MOV
+evaluation/recordings/*.mov
+evaluation/recordings/*.MP4
+
+# Generated world model checkpoints
+evaluation/models/world_model/wm_*/
+
+# Evaluation outputs
+evaluation/results/
+
+# PPO training runs
+runs/
+
+# Intermediate sweep checkpoints (keep only best_model.pth)
+paper/data/wm_data_sweep/*/checkpoints/epoch_*.pth
+paper/ram/main.pdf
+paper/ram/supplementary/supplementary.pdf
+
+# Local-only PPO-WM training run logs
+# (released checkpoints are in paper/data/world_model_models/)
+paper/data/ppo_wm_training/
+
+# Removed from ram branch — do not re-add
+website/
+paper/arxiv/
+paper/paper/
+paper/pdfs/
+PUBLISH_PLAN.md
+training/runs/
+
+# local build artifacts (never commit)
+ball-on-arc*.zip
+.wrangler/
+
+# local Claude Code project notes
+CLAUDE.md
+# Claude Code session state / worktrees: untracked and never committed. The
+# nested web worktree's git pointer embeds an absolute local path, so a
+# stray `git add .` would both bloat the change set and leak identifying paths.
+/.claude/
+# local scratch outputs (root-anchored so tracked paper/ figures are unaffected)
+/figures/
+/results/
+/glm
+*-eps-converted-to.pdf

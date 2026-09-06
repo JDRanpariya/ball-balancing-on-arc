@@ -1,0 +1,5 @@
+# configs/algo/ars.yaml
+
+_target_: sb3_contrib.ARS
+policy: "MlpPolicy"
+device: "cpu"

@@ -1,0 +1,250 @@
+\section{MPPI Controller Tuning}
+\label{appendix:mppi_tuning}
+
+\noindent\textit{This appendix covers MPPI parameter tuning, implementation features,
+and compute performance. The world model used by MPPI is described in
+Appendix~\ref{appendix:world_model}. Per-trial MPPI results are in
+Appendix~\ref{appendix:per_trial}.}
+
+\subsection{Algorithm Overview}
+
+Model Predictive Path Integral (MPPI) is a sampling-based MPC
+algorithm~\cite{hewing2020learning,williams2017mppi}. At each control step it
+samples $N$ random action sequences around the previous solution, rolls each
+one out through the learned world model on CPU (at each of the $H$ sequential
+LSTM steps the $N$ candidate rollouts are advanced together as one batch,
+i.e.\ parallel across samples but sequential along the horizon), and scores
+the resulting
+trajectories by cost. It then forms an
+importance-weighted mean of the sampled sequences, applies the first action of
+that averaged plan, and shifts the trajectory left to warm-start the next
+step.
+
+\subsection{Cost Function}
+
+\begin{equation}\label{eq:mppi_cost}
+J^{(i)} = \sum_{t=1}^{H} \left[ \mathbf{x}_t^T Q \mathbf{x}_t + R u_t^2 + c_{\text{wall}}(x_t) \right] + \mathbf{x}_H^T P \mathbf{x}_H
+\end{equation}
+
+where:
+\begin{itemize}
+  \item $Q = \text{diag}([0, 0.1, 30, 0.1])$: heavy ball-angle penalty
+  \item $R = 0.001$: very low control effort penalty
+  \item $c_{\text{wall}}(x_t) = 100 \cdot \max(0, |x^{\text{cart}}_t| - x_{\text{limit}})$: wall penalty on the cart position $x^{\text{cart}}_t$ (first coordinate of $\mathbf{x}_t$)
+  \item $P = \text{diag}([1, 2, 100, 5])$: terminal cost (LQR approximation), disabled in the deployed configuration
+\end{itemize}
+
+\subsection{Importance Weighting}
+
+\begin{equation}\label{eq:mppi_weight}
+w^{(i)} = \frac{\exp(-(J^{(i)} - J_{\min}) / \lambda)}{\sum_j \exp(-(J^{(j)} - J_{\min}) / \lambda)}
+\end{equation}
+
+\begin{equation}\label{eq:mppi_weighted_mean}
+\bar{U}^* = \sum_{i=1}^{N} w^{(i)} U^{(i)}
+\end{equation}
+
+The temperature parameter $\lambda$ controls how greedily the weights concentrate
+on low-cost trajectories: small $\lambda$ makes the distribution sharply
+peaked on the best trajectory; large $\lambda$ averages more uniformly.
+We use $\lambda=0.4$ to balance greedy exploitation with smooth averaging.
+
+\subsection{Action Sampling with Temporal Smoothing}
+
+\begin{equation}\label{eq:mppi_smoothing}
+u_t^{(i)} = \beta \cdot (\bar{u}_t + \epsilon_t^{(i)}) + (1-\beta) \cdot u_{t-1}^{(i)}, \quad \beta = 0.9
+\end{equation}
+with the base case $u_0^{(i)} = \bar{u}_0 + \epsilon_0^{(i)}$ (the first step is
+unsmoothed) and the recursion above for $t \ge 1$.
+
+Temporal smoothing ($\beta=0.9$) correlates noise across consecutive
+timesteps, producing smoother candidate trajectories that are more
+physically realizable on a velocity-controlled actuator and reduce
+high-frequency chatter in the selected action sequence.
+
+\subsection{Final Tuned Parameters}
+
+Table~\ref{tab:mppi_params} lists the parameters used for every reported MPPI
+run; the coordinate sweep that selected them is described next.
+
+\begin{table}[!ht]
+\centering
+\caption{MPPI tuned parameters.}
+\label{tab:mppi_params}
+\begin{tabular}{lll}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Description} \\
+\midrule
+$Q$ & $[0, 0.1, 30, 0.1]$ & State cost weights \\
+$R$ & 0.001 & Control effort penalty \\
+$\lambda$ & 0.4 & Temperature (lower = more greedy) \\
+Horizon ($H$) & 30 & Planning steps (1.5\,s lookahead) \\
+Samples ($N$) & 800 & Parallel rollouts \\
+$T_s$ & 0.05\,s & Control timestep (20\,Hz) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Tuning Method}
+
+We tune MPPI by a coordinate sweep in simulation, varying each of the ball-angle weight $Q[2]$,
+the control penalty $R$, the temperature $\lambda$, and the horizon $H$ in turn about a
+fixed center ($Q[2]{=}30, H{=}30, R{=}0.001, \lambda{=}0.4$) at $N=400$ rollouts, scoring each configuration by the number of initial
+conditions settled and the mean settling time across 7 difficulty-stratified
+ICs (30\,s per trial). We run the sweep on the released MPPI world model
+(Appendix~\ref{appendix:wm_provenance}), trained on the dataset
+\texttt{arcball\_cont\_1M\_calib196\_160.h5}; because it is conducted in
+simulation and is robust to minor model updates, the resulting parameter
+values transfer to the final hardware checkpoint.
+
+\subsection{Tuning Sweep Results}
+
+The sweep varied one factor at a time and evaluated $Q[2] \in \{15,20,25,30,40,50\}$,
+$H \in \{20,25,30,35\}$, $R \in \{0.001,0.005,0.01\}$,
+$\lambda \in \{0.3,0.4,0.5\}$ at $N=400$ rollouts
+with 7 difficulty-stratified ICs (30\,s per trial) in simulation.
+An earlier parameterization ($Q[2]=80$, $R=0.01$, $H=15$, $N=800$) is
+included as a baseline reference point.
+
+\begin{table}[!t]
+\centering
+\caption{MPPI tuning sweep: selected configurations.
+  All-settled (7/7) runs ranked by mean settling time;
+  partial-success runs shown below.}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Config} & $Q[2]$ & $R$ & $\lambda$ & $H$ & \textbf{Settled} & \textbf{Mean\,(s)} \\
+\midrule
+\multicolumn{7}{l}{\textit{All 7 ICs settled}} \\
+early config & 80 & 0.01 & 0.4 & 15 & 7/7 & 4.89 \\
+q30\_h25 & 30 & 0.001 & 0.4 & 25 & 7/7 & 6.74 \\
+\textbf{q30\_h30} & \textbf{30} & \textbf{0.001} & \textbf{0.4} & \textbf{30} & \textbf{7/7} & \textbf{7.16} \\
+q30\_h35 & 30 & 0.001 & 0.4 & 35 & 7/7 & 7.37 \\
+q30\_h20 & 30 & 0.001 & 0.4 & 20 & 7/7 & 8.64 \\
+q15\_h30 & 15 & 0.001 & 0.4 & 30 & 7/7 & 9.61 \\
+q50\_h30 & 50 & 0.001 & 0.4 & 30 & 7/7 & 9.65 \\
+\midrule
+\multicolumn{7}{l}{\textit{Partial success}} \\
+q20\_h30 & 20 & 0.001 & 0.4 & 30 & 6/7 & 5.74 \\
+q30\_lam05 & 30 & 0.001 & 0.5 & 30 & 6/7 & 7.46 \\
+q30\_r005 & 30 & 0.005 & 0.4 & 30 & 5/7 & 6.95 \\
+q30\_r01 & 30 & 0.01 & 0.4 & 30 & 5/7 & 8.43 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The hardware evaluation uses $Q[2]=30$, $R=0.001$, $\lambda=0.4$, $H=30$,
+$N=800$ (bolded row above, with the sample count raised to 800 for
+hardware; even at this higher count the mean compute stays within the
+50\,ms deadline, see Table~\ref{tab:mppi_runtime}). This configuration
+achieves 7/7 in simulation with $H=30$ providing sufficient lookahead;
+increasing $H$ beyond 30 does not improve success rate and raises
+compute cost. Several sweep configurations reach 7/7 with lower mean settling than the
+deployed one (including the earlier $Q[2]=80$, $R=0.01$, $H=15$ config and
+$Q[2]=25$, $H=30$), so the deployed settings are not the settling-optimal
+choice by the tabulated score. We nonetheless deploy $Q[2]=30$, $R=0.001$,
+$H=30$ because its higher $Q[2]$ and lower $R$ give smoother, less reactive
+planning; since the sweep is run in simulation and the settling differences
+among 7/7 configurations are small, this is a qualitative engineering choice
+rather than a settling-optimal or measured-hardware selection.
+
+\subsection{Advanced Implementation Features}
+
+The deployed MPPI controller implements several features beyond the basic
+sampling loop (Table~\ref{tab:mppi_features}); the table lists the full set
+available in the code, and features marked $^\dagger$ are disabled for the
+final evaluation. In the released configuration used for the 50-trial
+evaluation, context warm-up and warm-start are active, while model error
+correction and the terminal cost are turned off and adaptive noise has no
+effect because the deployed sampler draws uniform noise (the $\sigma$
+schedule applies only to Gaussian sampling). The cost function above gives
+the full form; its terminal term $\mathbf{x}_H^T P \mathbf{x}_H$ is therefore
+inactive in the deployed run.
+
+\begin{table}[!ht]
+\centering
+\caption{MPPI implementation features. Features marked with $^\dagger$ exist
+  in code but are disabled for the final evaluation (best performance
+  achieved without them).}
+\label{tab:mppi_features}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lp{0.66\columnwidth}}
+\toprule
+\textbf{Feature} & \textbf{Description} \\
+\midrule
+Context warm-up & Last $K=10$ observations fed through LSTM before planning \\
+Model error correction$^\dagger$ & EMA of prediction error applied as bias \\
+Terminal cost$^\dagger$ & LQR cost-to-go extends effective planning horizon \\
+Adaptive noise$^\dagger$ & $\sigma$ decays (0.95$\times$) when good; increases when struggling (inactive under uniform sampling) \\
+Warm-start & Previous solution shifted left; last action repeated \\
+Wall override$^\dagger$ & Hard override when cart near boundary (disabled) \\
+Cart clamping$^\dagger$ & Physical wall simulated during rollouts (disabled) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Compute Performance}
+
+MPPI is the only controller that approaches the real-time control
+deadline (Table~\ref{tab:mppi_runtime}); the classical and on-policy
+controllers run in under 1\,ms, and the remaining controllers
+(IQL, NMPC, PPO~(WM), and the off-policy RL policies) sit in the
+2--8\,ms range, still far below the 50\,ms deadline
+(Figure~\ref{fig:compute_time}).
+Although the world model was trained on a GPU, MPPI rollouts are
+faster on CPU for this small LSTM on our test machine, so the
+deployed controller uses CPU inference.  The numbers in
+Table~\ref{tab:mppi_runtime} are measured with a single PyTorch
+intra-op thread, which is conservative and leaves CPU headroom for
+sensor I/O and IPC.  Using four threads on the same hardware drops
+the per-step compute time to 20.07\,ms (about 2\,$\times$ faster;
+std 1.77\,ms vs 1.47\,ms) with a comparable overrun rate
+($\sim$0.04\%).  We report the single-thread numbers as a conservative
+reference; the released evaluator defaults to four threads.  This demonstrates
+that learned planning methods can meet stringent real-time
+constraints on a commodity host CPU without requiring a GPU at
+runtime~\cite{wang2024deployable}.  We caution that the CPU-vs-GPU
+ranking reflects our single hardware configuration and may differ on
+other machines.
+
+\begin{table}[!ht]
+\centering
+\caption{MPPI runtime performance (50 hardware trials, single PyTorch
+  intra-op thread on the deployment-host CPU, \texttt{calib196\_160} world
+  model; the four-thread figure is given in the text). Timings on a different
+  CPU will scale accordingly.}
+\label{tab:mppi_runtime}
+\begin{tabular}{ll}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Mean compute time & 39.99\,ms \\
+Max compute time & 69.81\,ms (cold-start) \\
+Median compute time & 39.77\,ms \\
+p95 compute time & 42.45\,ms \\
+p99 compute time & 43.94\,ms \\
+Mean active iteration time & 40.06\,ms \\
+Control deadline & 50\,ms (20\,Hz) \\
+Device & CPU (PyTorch) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Beyond raw speed, MPPI settles cleanly across the difficulty range:
+Fig.~\ref{fig:mppi_traj_difficulty} shows its ball-angle trajectories driving
+into the $\pm0.01$\,rad band from every stratum, with median settling ranging
+from about 1.2\,s (at-wall-same and center starts) to 2.7\,s
+(at-wall-opposite), and no sustained oscillation.
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=0.95\columnwidth]{figures/mppi_trajectories_by_difficulty.eps}
+  \caption{MPPI ball-angle trajectories by stratum. Each panel shows all
+    trials in the stratum (gray) with the median-settling trial highlighted
+    (blue) and the median settling time marked (dotted). The controller
+    settles the ball within the $\pm 0.01$\,rad band (green region) across
+    all strata, with median settling from about 1.2\,s (at-wall-same and
+    center) to 2.7\,s (at-wall-opposite).}
+  \label{fig:mppi_traj_difficulty}
+\end{figure}

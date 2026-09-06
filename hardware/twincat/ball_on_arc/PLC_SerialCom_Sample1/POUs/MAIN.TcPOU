@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="MAIN" Id="{aef089b1-c7c5-479f-8336-a7bf9b8b2785}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Ball on Arc - velocity-controlled serial bridge.
+
+One serial interface is used: EL6002 2-port RS-232 terminal, channel 2 (X2),
+cabled to the host PC via a USB-to-RS-232 adapter. The host streams velocity
+setpoints in mm/s wrapped in STX/ETX; the PLC streams back the live axis
+position and velocity every 10 ms through the same channel.
+
+The SerialLineControl block that drives the EL6002 lives in BackgroundEL and
+uses the RxBufferEL / TxBufferEL globals declared in GVL.
+
+FB_SerialCom_Vel internally drives MC_MoveVelocity with MC_Aborting buffer
+mode and is used for BOTH discrete and continuous host actions (discrete
+actions are sent as velocity setpoints e.g. +/-900 mm/s or 0).
+*)
+PROGRAM MAIN
+VAR
+	fbEL6001	: FB_SerialCom_Vel;	(* instance name kept for historical reasons *)
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbEL6001(TxBuffer:=TxBufferEL, RxBuffer:=RxBufferEL);
+]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN">
+      <LineId Id="11" Count="0" />
+      <LineId Id="14" Count="2" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

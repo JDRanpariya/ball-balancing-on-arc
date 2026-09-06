@@ -1,0 +1,11 @@
+# World model environment for PPO-WM training.
+# Points at the v1 checkpoint (trained on arcball_cont_1M_pre_neg.h5) -
+# the one the paper's PPO-WM 100% HW SR result uses. MPPI uses the v12
+# checkpoint at evaluation time (see evaluation/utils/load_controllers.py).
+_target_: balancer.envs.world_model_env.BalancerWorldModel
+checkpoint_path: evaluation/models/world_model/v1/best_model.pth  # relative to repo root; run from repo root
+reward: balanced
+device: cpu
+noise_std: 0.001
+max_episode_steps: 600
+action_type: cont

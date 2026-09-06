@@ -1,0 +1,256 @@
+\section{Classical Controller Tuning: Insights and Lessons}
+\label{appendix:tuning_insights}
+
+This appendix documents the tuning process for each classical
+controller, including approaches that failed and the reasoning
+behind final parameter choices.
+All tuning uses the full nonlinear dynamics with first-order motor
+model ($\tau_v = 0.15$\,s), 1-step command delay, and RK4 integration
+at 20~Hz. (S-curve was used in earlier ablations only; the first-order
+model matches what is used for final evaluation.)
+
+\subsection{General Methodology}
+
+We tune the classical and predictive controllers with
+CMA-ES~\cite{hansen2016cma}, scaling the population size and evaluation
+budget to each controller's cost per evaluation: 40 and 1500 evaluations
+for PD, 32 and 980 for LQR, 36 and 1200 for SMC, and 20 and 500 for MPC
+and NMPC, whose per-evaluation solves are far more expensive. The deployed LQR+WO is an
+exception: its gain is the PD-equivalent one (the deployed PD law's gains with
+the cart-state terms zeroed) rather than the CMA-ES or Riccati LQR solution,
+which fail on hardware (see the LQR subsection below). All share the composite CMA-ES objective $J$ (integrated squared error in
+$\theta$ and $u$, a Gaussian-gated ISE in $\dot\theta$, and a
+boundary-violation count) defined in Appendix~\ref{appendix:implementation}.
+We optimize over
+7 stratified initial conditions, including 2 same-side cases with the ball
+displaced toward the wall, using 30\,s trials, and evaluate the tuned
+controllers on 50 stratified initial conditions with a settling band of
+0.01\,rad held for 1.0\,s.
+
+\subsection{PD}
+
+The deployed PD controller uses two gains, $K_p=19.78$ and $K_d=1.37$, together with the
+wall override ($d_w=0.12$~m, $u_\text{ov}=0.5$). We set the wall margin at
+0.12\,m empirically; it serves as a heuristic braking-distance reference,
+close to the velocity-lag product
+$V_\text{max} \times \tau_v = 0.9 \times 0.15 = 0.135$~m, which gives a
+rough upper bound.
+
+Three additions that seemed reasonable did not survive tuning. A cart-position
+centering gain ($u \mathrel{+}= K_x \cdot x$, $K_x < 0$) conflicts with the $K_p \cdot \theta$ term,
+since the two oppose in sign when the ball is displaced toward the wall, so we
+removed it entirely. Integral action ($K_i > 0$) causes windup during the
+wall-override intervals, and CMA-ES consistently converges to
+$K_i \approx 0$, which is why we use PD rather than PID. Vanilla PD without
+the override reaches 84\% in simulation but only 18\% on hardware
+(Table~\ref{tab:failed_variants}): when the ball is off-center it commands the
+cart toward the ball, and if the ball responds slowly, through inertia or
+friction, the cart crosses the full track and reaches the rail limit before
+the ball recenters, a runaway from which PD without the wall override cannot
+recover.
+
+\subsection{LQR}
+
+Our LQR computes its gain from the discrete-time algebraic Riccati equation
+(DARE): a state weighting $Q$ and control weighting $R$ go in and the optimal
+feedback gain comes out. We tried both a hand-set
+$Q = \text{diag}([0.001,\, 0.004,\, 18.7,\, 1.76])$, $R = 0.017$ (giving
+$K_\theta \approx -20.7$) and a from-scratch CMA-ES search over $Q, R$ against
+our usual objective (giving a more aggressive $K_\theta \approx -34$). Both are
+optimal-control gains, and both carry cart-position and cart-velocity feedback.
+
+The optimal-control gain did not transfer in our runs. The CMA-ES gain, even
+with the wall override, reached only 16\% SR (8/50) and failed from the roomy
+center starts too (0 of 10), so what we see looks more like a settling problem
+than a boundary one. In the trajectories, the cart-state feedback keeps the
+controller active even once the ball is balanced: over the timesteps where the
+ball is already inside the $0.01$~rad success band, the command is dominated by
+the cart-position term (the cart sits about $0.6$~m off-center at those moments
+on average), and the optimal gain saturates the $\pm 0.9$~m/s actuator on more
+than half of them, against essentially none for the PD-equivalent gain. Those
+cart-centering commands appear to knock the ball back out before it can hold the
+band for the required second, the same tension as the Q-center variant below.
+The hand-set Riccati gain, run without the override, does no better (3/50).
+
+The gain that did transfer is the PD law used directly as state feedback: we
+take the deployed PD gains ($K_\theta = -19.78$, $K_{\dot\theta} = -1.37$) as
+$K$, with the cart entries at zero. This gain carries no cart-position or
+cart-velocity feedback at all, so on its own it does nothing to keep the cart
+off the rail: run without the override it reaches only 20\% SR (10/50), failing
+near-uniformly across the difficulty strata as the cart drifts out. Adding the
+wall override ($d_w=0.12$~m, $u_\text{ov}=0.5$), with the gain otherwise
+unchanged, supplies exactly that missing rail protection and lifts the same
+controller to 92\% SR (46/50); this is what the deployed LQR+WO applies.
+What we take from this, on this platform rather than as a general claim, is that
+reaching a reliable LQR here took two things together: using the PD gains as the
+state-feedback gain, so the cart authority the optimal cost assigns does not
+fight ball stabilization, and adding the override to handle the rail that this
+gain ignores. The 20\%-versus-92\% pair isolates the override's effect with the
+gain held fixed; the 16\% optimal gain shows that simply restoring cart
+authority is not the fix.
+
+One further variant shows why the cost cannot substitute for the override.
+Trying to prevent wall collisions through the cost alone, by raising the
+cart-position weight until $K_0 > 2$, makes the centering term fight ball
+stabilization and the response oscillates; this forced Q-center variant
+reaches only 28\% on hardware. That is a fundamental limitation of a single
+linear gain vector, which cannot simultaneously optimize same-side recovery
+and large-angle stability.
+
+\paragraph{Override contribution.}
+The wall-override, not the underlying control law, does much of the
+recovery work for every classical controller on this platform, not just
+LQR. Across the 50 trials per controller, the cart reaches the override
+trigger zone ($|x| > 0.66$\,m) in 75--98\% of successful trials (85\%
+for LQR+WO, 75\% for PD+WO, 98\% for SMC+WO, 80\% for MPC+WO) and, once
+there, spends $\sim$31--47\% of its steps inside it. Few trials end at
+track center (Fig.~\ref{fig:wall_override_dep}): most successful
+trajectories invoke the override and finish away from center, consistent
+with boundary handling, rather than linear-model fidelity or
+sliding-surface design, doing much of the recovery.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\columnwidth]{figures/wall_override_dependence.eps}
+  \caption{Wall-override dependence across the four WO classical
+    controllers (successful trials only). (a) Override firing rate and
+    mean active-step fraction. (b) End-of-trial cart-position
+    histogram; few trials end at center, indicating that successful
+    trials typically invoke the override rather than settling under the
+    nominal control law alone.}
+  \label{fig:wall_override_dep}
+\end{figure}
+
+\subsection{SMC}
+
+The deployed SMC uses a first-order sliding surface
+$\sigma = \dot{\theta} + \lambda\theta$ with a smooth saturation boundary
+layer $\phi$ and the same wall override as PD and LQR. Its best variant takes
+a relatively wide boundary layer ($\phi=0.806$) to avoid chattering at the
+20\,Hz hardware rate, and reaches 92\% on hardware: the override prevents
+irreversible wall impacts, while the wide boundary layer keeps the
+sensor-noise-induced switching manageable.
+
+The failure modes trace back to the same two pressures. Without boundary
+handling, the nominal sliding surface regulates ball angle but does not center
+the cart, so residual model-cancellation bias and friction mismatch let the
+cart drift toward the rail, leaving the basic variant at 12\% on hardware.
+Thin boundary layers make the controller behave more like a discontinuous
+sliding controller and chatter severely under noisy ToF feedback, with more
+than 500 sign reversals per episode in preliminary tests, so hardware
+stability forces the wide-boundary-layer regime. Aggressive cart-centering or
+damping gains reduce wall drift but destabilize ball regulation at large
+angles, which is why the final SMC+WO variant leans on the override for
+boundary recovery rather than trying to solve boundary avoidance inside the
+sliding surface. Finally, because SMC's equivalent control depends on accurate
+dynamics, the residual sim-to-real gap, consistent with the higher-order motor
+response (Appendix~\ref{appendix:simulation_validation}) and sensor staleness
+(Appendix~\ref{appendix:sensor_characterization}), is a natural explanation for
+why SMC+WO settles more slowly on hardware than in first-order simulation
+despite its high success rate.
+
+\subsection{Linear MPC}
+
+Linear MPC uses a short horizon $N=10$ with
+$Q = \text{diag}([0.001,\, 0,\, 40,\, 0])$ and $R = 0.017$, together with the
+wall override ($d_w=0.12$~m, $u_\text{ov}=0.5$) and the QP cart constraints
+\emph{disabled} (the cart-constraint rows are omitted from the QP). Four
+things went wrong before we reached this configuration.
+
+Penalizing $\dot{\theta}$ with a positive weight inverts the command. Writing
+the linearized discrete-time model as $x_{k+1}=A x_k + B u_k$ with state
+$x=[x_\text{cart},\,\dot{x}_\text{cart},\,\theta,\,\dot{\theta}]^\top$ and
+input matrix $B=(B_1,B_2,B_3,B_4)^\top$, the $\dot\theta$ input-sensitivity
+row $B_4$ is negative near $\theta=0$: a positive cart-velocity command
+produces a negative angular acceleration. The $\dot\theta$-penalty is the
+fourth diagonal entry $Q_{44}$, and empirically a positive $Q_{44}$ acting
+through the negative $B_4$ drives the QP to command the wrong sign, so the
+system diverges immediately; setting $Q_{44}=0$ removes the inversion. A long
+horizon is the second problem: over many prediction steps the linearization
+error accumulates, and at large angles ($\theta > 0.06$)
+the linear model underestimates the restoring torque and plans too weak a
+correction, so the QP under-responds; $N=30$ passes only 1 of 7 tuning initial conditions.
+The QP cart constraint fails on hardware for a related reason: the linear
+model underestimates braking distance (first-order lag versus the S-curve jerk
+limits), so when the cart is near the rail with positive velocity the QP
+becomes infeasible, because no admissible input sequence keeps the predicted
+cart positions within the bound, and the fallback $u=0$ lets the ball escape: the natively
+constrained variant reaches only 44\% on hardware. Removing the QP cart
+constraint and relying on the wall override instead yields 80\%.
+Finally, too small an input penalty $R$ (against the tuned $R=0.017$) makes the
+controller over-trust the linear model's predicted optimum, which diverges
+quickly from reality on hardware and produces oscillatory commands that rarely
+settle within the trial.
+
+\subsection{NMPC}
+
+NMPC solves a full nonlinear program in CasADi~\cite{casadi} over the
+friction-augmented dynamics, with a short horizon $N=10$,
+$Q = \text{diag}([0,\, 0,\, 9,\, 0])$, $R = 0.006$, hard cart constraints in
+the NLP, and no wall override; it reaches 90\% on hardware (45 of 50 trials).
+
+Its failures come from optimizing too far ahead of reliable observations. A
+long horizon $N=30$ balances 100\% in simulation but passes only 1 of 7
+conditions in a preliminary hardware screening, because the NLP optimizes a
+longer trajectory from the current, possibly stale estimate and its
+predictions degrade once the ball enters the sensor blind zone
+($|\theta| > 0.071$~rad) and model error accumulates over the horizon; the
+shorter $N=10$ optimizes over fewer steps and is the configuration we deploy.
+Both horizons re-solve every 50~ms and apply only the first planned action.
+Adding a wall override actually hurts NMPC, because it replaces that first
+planned action and invalidates the warm-started trajectory, producing
+oscillatory behavior. The first-order-versus-S-curve motor mismatch matters less than it
+might: with $N=10$ the solver replans every 50\,ms and applies only the first
+planned action, which limits error accumulation, whereas at $N=30$ the prediction quality
+degrades and the solver returns unreliable plans.
+
+\subsection{Cross-Controller Insights}
+
+A few lessons cut across all five controllers. The first is that the wall
+override is controller-dependent: it helps PD, LQR, SMC, and linear MPC, which
+lack reliable boundary handling of their own, but it is counterproductive for
+NMPC, whose planned trajectories it disrupts; across the four controllers it
+helps, the gain ranges from +36\,pp for MPC to +80\,pp for SMC
+(Fig.~\ref{fig:wall_override_ablation}). For MPC this comparison also removes
+the QP cart constraint, so its figure reflects the full configuration change
+rather than the override alone. The second concerns the sensor
+blind zone, which is a ball-side artifact, separate from the cart's rail
+limit: when the ball rolls to the ends of the arc ($|\theta| > 0.071$\,rad) it
+comes too close to a sensor and the reading saturates. Its contribution to
+hardware failure is established directly by the blind-zone ablation, where
+modeling it lifts PPO~(BZ+DR) about 8\,pp over its no-blind-zone counterpart
+in the development regime (Appendix~\ref{appendix:results}; the matched
+first-order-lag checkpoint gives 6\,pp, Appendix~\ref{appendix:rl_fairness}),
+rather than inferred from which cart strata fail.
+This is a difficulty distinct from the cart running out of rail, even though a
+hard recovery can provoke both at once, and the controllers least affected on
+hardware are those that recover from the rail quickly (LQR+WO) or that learn
+the sensor artifact.
+
+The remaining lessons are about planning. Shorter horizons beat longer ones on
+hardware: reducing $N$ from 30 to 10 improves success dramatically for both
+MPC and NMPC, because stale observations corrupt long-horizon plans while
+reactive replanning tolerates the sensor limitations. More broadly, on this
+platform reactivity appears to matter as much as model accuracy. LQR+WO, with a
+linear model and no horizon planning, reaches 92\% on hardware, whereas NMPC,
+with a full nonlinear model and 10-step planning, reaches 90\% without an
+override and is degraded by adding one. No pairwise success-rate difference
+among the deployed controllers is statistically significant
+(Appendix~\ref{appendix:per_trial}), so we read this as a consistent pattern
+rather than a strict ranking: a controller that responds to the \emph{current}
+observation is at least competitive with sophisticated planners whose plans are
+disrupted by external constraint handling. A final note, from NMPC, is that the
+S-curve simulation can be harder than hardware. NMPC $N=10$ scores markedly
+lower in S-curve simulation, its internal first-order model running against an
+S-curve plant, than the 90\% it reaches on hardware; the S-curve simulation
+thus appears to \emph{overestimate} the sim-to-real gap for this short-horizon
+predictive controller.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\columnwidth]{figures/wall_override_ablation.eps}
+  \caption{Effect of wall override on hardware success rate across four
+    classical controllers. The improvement ranges from +36\,pp (MPC) to
+    +80\,pp (SMC).}
+  \label{fig:wall_override_ablation}
+\end{figure}

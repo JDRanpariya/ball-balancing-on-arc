@@ -1,0 +1,15 @@
+_target_: balancer.core.dynamics.NonLinearDynamics
+gravity : 9.81
+cart_mass : 0.351
+ball_mass : 0.024
+arc_radius : 2.101
+ball_radius : 0.009
+ball_moment_of_inertia : 7.7e-7
+tau : 0.05
+kinematics_integrator : "rk4"
+motor_model : "s_curve"
+velocity_lag_tau : 0.15
+command_delay_steps : 1
+jerk_limit : 50.0
+accel_limit : 15.0
+decel_limit : 15.0

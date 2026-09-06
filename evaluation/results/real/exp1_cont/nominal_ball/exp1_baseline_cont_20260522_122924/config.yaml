@@ -1,0 +1,15 @@
+Ts: 0.05
+action_type: cont
+description: "Exp1 \u2014 Baseline hardware, cont at 20 Hz"
+env_label: nominal_ball
+motor_model: first_order
+name: exp1_baseline_cont
+noise_sigma: 0.0
+num_trials: 5
+results_dir: results/real/exp1_cont
+resume: true
+run_time: 30.0
+settling_band: 0.01
+settling_duration: 1.0
+timestamp: '20260522_122924'
+velocity_band: 0.05

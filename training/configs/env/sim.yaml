@@ -1,0 +1,11 @@
+defaults:
+  - _self_
+  - dyn: first_order
+
+_target_: balancer.envs.sim.BalancerSim
+reward: "balanced"
+action_type: "cont"
+tau: 0.05           # <- 20Hz, matches hardware
+integrator: "rk4"   # <- matches tuning
+fixed_param: true   # false = domain randomization
+sensor_blind_zone: false  # true = VL53L0X blind zone (use with DR)

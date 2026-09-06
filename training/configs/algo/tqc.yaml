@@ -1,0 +1,5 @@
+# configs/algo/tqc.yaml
+
+_target_: sb3_contrib.TQC
+policy: "MlpPolicy"
+device: "cpu"

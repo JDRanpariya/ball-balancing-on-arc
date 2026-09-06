@@ -1,0 +1,112 @@
+{
+  "observation_shape": [
+    4
+  ],
+  "action_size": 1,
+  "config": {
+    "type": "iql",
+    "params": {
+      "batch_size": 256,
+      "gamma": 0.99,
+      "observation_scaler": {
+        "type": "standard",
+        "params": {
+          "mean": [
+            0.02889741125679515,
+            0.007123766537514528,
+            -0.0001404722969570429,
+            9.216510255652138e-05
+          ],
+          "std": [
+            0.5313496421361231,
+            0.4336255000290916,
+            0.05619632543611479,
+            0.10118115287399337
+          ],
+          "eps": 0.001
+        }
+      },
+      "action_scaler": {
+        "type": "min_max",
+        "params": {
+          "minimum": [
+            -1.0
+          ],
+          "maximum": [
+            1.0
+          ]
+        }
+      },
+      "reward_scaler": {
+        "type": "none",
+        "params": {}
+      },
+      "compile_graph": false,
+      "actor_learning_rate": 0.0003,
+      "critic_learning_rate": 0.0003,
+      "actor_optim_factory": {
+        "type": "adam",
+        "params": {
+          "clip_grad_norm": null,
+          "lr_scheduler_factory": {
+            "type": "none",
+            "params": {}
+          },
+          "betas": [
+            0.9,
+            0.999
+          ],
+          "eps": 1e-08,
+          "weight_decay": 0,
+          "amsgrad": false
+        }
+      },
+      "critic_optim_factory": {
+        "type": "adam",
+        "params": {
+          "clip_grad_norm": null,
+          "lr_scheduler_factory": {
+            "type": "none",
+            "params": {}
+          },
+          "betas": [
+            0.9,
+            0.999
+          ],
+          "eps": 1e-08,
+          "weight_decay": 0,
+          "amsgrad": false
+        }
+      },
+      "actor_encoder_factory": {
+        "type": "default",
+        "params": {
+          "activation": "relu",
+          "use_batch_norm": false,
+          "dropout_rate": null
+        }
+      },
+      "critic_encoder_factory": {
+        "type": "default",
+        "params": {
+          "activation": "relu",
+          "use_batch_norm": false,
+          "dropout_rate": null
+        }
+      },
+      "value_encoder_factory": {
+        "type": "default",
+        "params": {
+          "activation": "relu",
+          "use_batch_norm": false,
+          "dropout_rate": null
+        }
+      },
+      "tau": 0.005,
+      "n_critics": 2,
+      "expectile": 0.7,
+      "weight_temp": 3.0,
+      "max_weight": 100.0
+    }
+  }
+}

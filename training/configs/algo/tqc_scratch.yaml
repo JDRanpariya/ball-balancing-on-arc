@@ -1,0 +1,7 @@
+# TQC from scratch on real hardware
+_target_: sb3_contrib.TQC
+policy: "MlpPolicy"
+device: "cpu"
+learning_rate: 0.0003
+batch_size: 256
+learning_starts: 1000

@@ -1,0 +1,18 @@
+\section{Related Work}
+\label{sec:related}
+
+Comparisons of control methods have become rigorous within each family, yet they rarely reach across them.
+The ball-and-beam and its ball-on-arc relatives have served as control testbeds since the 1970s, usually one controller at a time~\cite{wellstead1978ballbeam}.
+Real-robot benchmarking has since become far more systematic, though mostly within reinforcement learning: a systematic evaluation of RL on physical robots compares model-free algorithms with one another~\cite{mahmood2018benchmarking}, with classical and predictive control outside its scope.
+Control learned from data, whether by planning through a learned dynamics model, training a policy inside one, or fitting a policy offline from logged data, forms a substantial line of its own, and its hardware evaluations stay within it too, as in an offline-RL benchmark on manipulation hardware~\cite{guertler2023benchmarking}.
+The efforts that do span paradigms, most notably safe-control-gym, which evaluates classical control, MPC, and RL under shared constraints~\cite{yuan2022safecontrolgym}, and a comparison of MPC and RL for legged locomotion~\cite{akki2025benchmarking}, run in simulation.
+
+When multi-method comparison does reach hardware, it tends either to idealize the plant or to split the tuning across authors.
+The classic rigs, with the Quanser rotary servo pendulum as a representative example~\cite{quanser_qube2}, pair a direct-drive motor and clean encoders with a closely matched simulator, so little of the sim-to-real gap a deployed system faces ever reaches the bench.
+The closest effort on hardware, the second AI Olympics on the RealAIGym underactuated double pendulum~\cite{wiebe2025reinforcementlearningrobustathletic}, runs on real quasi-direct-drive hardware under a shared protocol.
+Its four finalists are all reinforcement-learning variants, each authored and tuned by a separate team, so its comparison stays within reinforcement learning rather than spanning the classical, predictive, and learning-based paradigms, and its quasi-direct-drive plant leaves out the actuation and sensing frictions of a deployed rig.
+An empirical study of real-world reinforcement learning identifies latency, noise, and constraints among the conditions where learning-based controllers most often fail~\cite{dulac2021challenges}.
+
+Those are the conditions a benchmark should put a controller through, yet no shared hardware bench presents them to every paradigm at once.
+A comparison worth trusting also has to be reproducible: implementation and evaluation choices already dominate learning-based outcomes~\cite{henderson2018deeprl,agarwal2021precipice}, and on hardware the plant becomes one of those choices, since no two rigs share the same friction, latency, and sensor behavior, so the rig has to be documented well enough for another laboratory to rebuild it.
+Bonsignorio and Zereik reached that bar for a two-method visual-servoing comparison on a low-cost arm~\cite{bonsignorio2021visualservoing}; doing the same across every paradigm, on hardware that keeps the frictions of deployment, is the harder task that remains.

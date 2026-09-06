@@ -1,0 +1,339 @@
+\section{Controller Design}
+\label{appendix:implementation}
+
+All controllers inherit from a common \texttt{BaseController} interface,
+accept state $s = [x,\,\dot{x},\,\theta,\,\dot{\theta}]^\top$, and
+return a cart-velocity set-point $u$ in m/s. The set-point is
+saturated at the axis limit ($\pm 0.9$\,m/s) by the shared command
+interface: the simulator clips it before the motor model, and the
+hardware bridge applies the identical clip before converting to mm/s.
+Saturation is therefore a property of the plant interface rather than
+of any individual controller, and all controller families command
+against the same effective actuation range in simulation and on
+hardware.
+This command is passed directly to \texttt{MC\_MoveVelocity}, the
+PLCopen velocity-command function block accepted by the Beckhoff servo
+drive (it starts an endless travel at a commanded velocity/direction,
+not a jogging primitive). Internally, the
+servo executes a 7-phase optimized S-curve velocity profile; for control
+design we approximate this as a first-order lag ($\tau_v = 0.15$\,s).
+Learning-based controllers (RL, MPPI, IQL) are implemented in
+PyTorch~\cite{paszke2019pytorch}.
+The justification is pragmatic, not algorithmic: (1)~the first-order
+lag was identified empirically from open-loop trajectory matching and
+captures the dominant outer-loop velocity response that every controller
+family actually commands against; and (2)~none of our controllers
+(feedback laws, planners, or RL policies) issue jerk/acceleration
+set-points, so the S-curve's internal jerk-limited transitions are not a
+design degree of freedom for them. Where the higher-order motor
+response matters (predictive controllers trying to brake into a wall),
+the residual mismatch is characterized as a sim-to-real gap in
+Appendix~\ref{appendix:simulation_validation} rather than modeled in
+the loop.
+This section describes the key design choices for each controller;
+selected deployed parameters are listed in Table~\ref{tab:controller_params}.
+
+\subsection{Tuning Methodology}
+\label{sec:tuning}
+
+We tune the classical controllers via CMA-ES~\cite{hansen2016cma} (pycma~\cite{hansen2019pycma})
+(Covariance Matrix Adaptation Evolution Strategy: a gradient-free
+optimizer that adapts a multivariate Gaussian search distribution,
+well-suited for low-dimensional, non-convex parameter optimization)
+in a first-order motor simulation (RK4, 20~Hz) using an ISE-based objective:
+\begin{equation}
+  J = 500 \cdot \mathrm{ISE}_\theta + 20 \cdot \mathrm{ISE}_{\dot\theta}
+      + 0.5 \cdot \mathrm{ISE}_u + 0.1 \cdot N_\text{boundary}
+\end{equation}
+where $\mathrm{ISE}_x = \tfrac{1}{T}\int_0^T x(t)^2\,dt$ is the
+time-averaged squared error of the ball angle $\theta$ and the
+command $u$; the velocity term additionally weights $\dot\theta^2$ by a
+Gaussian gate $\exp(-\theta^2/2\sigma_g^2)$ with $\sigma_g \approx 0.0085$
+(the value \texttt{0.020/2.355} used in code, applied to the ball
+angle $\theta$), so angular velocity is penalized mainly near
+equilibrium; and $N_\text{boundary}$ counts
+timesteps at which the ball angle reaches its physical limit
+($|\theta| \geq \theta_\text{max}$). $J$ is averaged over 7
+representative initial conditions spanning all strata.
+
+\subsection{PD Controller}
+
+We use a PD controller whose derivative term acts on the measured angular
+velocity:
+\begin{equation}
+  u_t = K_p\,\theta_t + K_d\,\dot{\theta}_t.
+  \label{eq:pd_law}
+\end{equation}
+No integral term is used ($K_i = 0$, confirmed by CMA-ES convergence):
+adding integral action causes windup during wall-override intervals
+(when the nominal command is replaced) and was consistently rejected by
+the optimizer. The arc's concave dip is passively restoring about the
+equilibrium, so no integral term is needed to remove steady-state
+angle error in the linear regime.
+
+\paragraph{Wall-proximity override.}
+Let $u_\text{nom}$ be the controller's nominal command. When the cart is
+within $d_w$ of a rail limit and $u_\text{nom}$ pushes toward the wall, the
+output is overridden with a fixed escape velocity $u_\text{ov}$ (m/s):
+\begin{equation}
+  u_t = \begin{cases}
+    -u_\text{ov} & x > x_\text{lim} - d_w \text{ and } u_\text{nom} > 0,\\
+    +u_\text{ov} & x < -(x_\text{lim} - d_w) \text{ and } u_\text{nom} < 0,\\
+    \ \, u_\text{nom} & \text{otherwise.}
+  \end{cases}
+  \label{eq:override}
+\end{equation}
+With the override and calibrated sensors, PD+WO reaches 96\% hardware SR.
+Two ablations isolate the contributions: removing the override drops it to
+18\% (vanilla PD), and keeping the override but disabling sensor-offset
+correction (Appendix~\ref{appendix:sensor_offset}) drops it to 88\%
+(Appendix~\ref{appendix:results}). The override prevents irreversible wall
+collisions. The same override is applied to LQR.
+
+\subsection{Linear Quadratic Regulator (LQR)}
+
+LQR linearizes the first-order velocity-input dynamics
+about $\theta = 0$; the discrete-time algebraic
+Riccati equation (DARE)~\cite{lewis2012optimal} yields a state-feedback
+gain $K = [K_x,\, K_{\dot x},\, K_\theta,\, K_{\dot\theta}]$. The deployed
+wall-override configuration does not use this DARE solution: on hardware the
+gain that transfers is the PD-equivalent one (cart terms zero,
+Table~\ref{tab:controller_params}), as the DARE and CMA-ES solutions perform
+far worse on the real system (see the LQR discussion in the classical-tuning
+appendix).
+Three variants are evaluated:
+\begin{itemize}
+  \item \textbf{Basic}: No constraint handling; same PD-equivalent
+    deployed gain with the override disabled (20\% HW SR).
+  \item \textbf{Q-center}: High $Q_x$ penalizes cart displacement
+        (28\% HW SR, oscillatory).
+  \item \textbf{Wall override}: Eq.~\eqref{eq:override} with
+        $d_w{=}0.12$~m, $u_\text{ov}{=}0.5$ (\textbf{92\%} HW SR, PD-equivalent gain).
+\end{itemize}
+
+\subsection{Sliding Mode Controller (SMC)}
+\label{sec:smc_impl}
+
+Sliding mode control has been applied to the ball-and-arc system in prior
+work~\cite{ho2010smc,kao2018secondorder}. Our implementation defines a
+sliding surface $\sigma = \dot\theta + \lambda\theta$
+and computes the equivalent control via model inversion~\cite{slotine1991applied}:
+\begin{equation}
+  v_\text{eq} = -\frac{F}{G}, \quad
+  F = f_\text{vel}(\theta,\dot\theta,\dot{x}) + \lambda\dot\theta,\quad
+  G = g_\text{vel}(\theta)
+  \label{eq:smc}
+\end{equation}
+with a smooth reaching law $v_\text{reach} = -(k/G)\,\tanh(\sigma/\phi)$
+and an explicit cart-velocity damping term:
+\begin{equation}
+  v_\text{cmd} = -\frac{F + k\,\tanh(\sigma/\phi)}{G} - k_d\,\dot{x}.
+  \label{eq:smc_full}
+\end{equation}
+
+\paragraph{Cart-velocity damping.}
+The term $-k_d\dot{x}$ is a separate cart-velocity damper appended to
+the SMC command; it is not part of the sliding surface (which depends
+only on $\dot\theta$ and $\theta$). The ball bearing's rolling friction
+(Appendix~\ref{appendix:dynamics}) enters $f_\text{vel}$ and is included in the
+nominal equivalent-control compensation; it is not what $k_d$ addresses. Instead, $k_d$
+closes an open-loop cart-drift mode: when $\sigma\approx 0$ and
+$\theta\approx 0$ the model-inversion terms in $v_\text{eq}$ collapse to
+small residuals (model error, discretization, sensor offset) that act as
+a constant velocity command; without damping these integrate through
+the first-order cart lag into unbounded cart motion after the ball is
+balanced. Adding $-k_d\dot{x}$ directly opposes any residual cart
+velocity, independent of ball angle.  We find $k_d{=}0.5$ sufficient
+on hardware.
+
+\paragraph{Boundary layer.}
+The boundary layer thickness $\phi$ controls the trade-off between
+chattering and steady-state accuracy.  Small $\phi$ (${<}0.15$)
+causes chattering ($>$500 sign reversals per episode at 20~Hz);
+large $\phi$ (${>}0.8$) reduces $\tanh$ to a near-linear function,
+effectively converting the controller to a continuous nonlinear
+approximation rather than a true variable-structure controller.
+CMA-ES selects $\phi{=}0.806$ for the deployed SMC+WO variant,
+in the large-$\phi$ regime. We acknowledge this trade-off:
+the sliding-mode discontinuity is sacrificed for
+stability on hardware at 20~Hz with noisy sensor feedback;
+smaller $\phi$ values produced unacceptable chattering in preliminary trials.
+The cart-velocity damping term $-k_d\dot{x}$ is retained in the deployed
+SMC+WO variant ($k_d{=}0.5$); without it, the post-balance cart-drift mode
+described above remains open-loop and the cart eventually reaches a
+rail. Earlier SMC formulations without the wall-override achieved only
+about 12\% hardware SR.
+
+\paragraph{Wall-proximity override.}
+The same override as Eq.~\eqref{eq:override} is applied with
+$d_w{=}0.12$~m, $u_\text{ov}{=}0.5$. Combined with the $k_d$ damping
+term, this raises hardware SR from 12\% (the basic variant without
+override or damping) to \textbf{92\%}.
+
+\subsection{Linear MPC}
+
+MPC formulates a finite-horizon QP using the linearized
+first-order motor model with cart position as a hard constraint:
+\begin{equation}
+\begin{aligned}
+  \min_{U}\ & \sum_{k=0}^{N-1} \left[ x_k^\top Q\, x_k + u_k^\top R\, u_k \right]
+  + x_N^\top Q_f\, x_N \\
+  \text{s.t. }\ & x_{k+1} = A_d x_k + B_d u_k,\quad x_0 = s_t,\\
+  & |[x_k]_1| \leq x_\text{lim},\quad |u_k| \leq 0.9~\text{m/s}
+\end{aligned}
+\end{equation}
+with $N{=}10$, solved via OSQP~\cite{osqp}.
+The QP cart constraint is MPC's native boundary handling and yields
+44\% hardware SR; the deployed wall-override variant
+($d_w{=}0.12$, $u_\text{ov}{=}0.5$) drops the QP cart constraint and
+relies on the override instead, raising SR to \textbf{80\%}.
+
+\subsection{Nonlinear MPC (NMPC)}
+
+NMPC solves a full nonlinear NLP using CasADi/IPOPT~\cite{casadi}
+with RK4 discretization of the velocity-input dip dynamics:
+\begin{equation}
+\begin{aligned}
+  \ddot\theta = \frac{1}{C_\mathrm{eff}(\theta)}\Big[
+    &-R\cos\theta \cdot \ddot x - \tfrac{1}{2}C'(\theta)\dot\theta^2 \\
+    &+ g(R\sin\theta - a(\theta)) - Q_\text{rr} - Q_\text{visc} \Big]
+\end{aligned}
+\end{equation}
+with $a(\theta)$, $C_\mathrm{eff}(\theta)$, and the friction terms $Q_\text{rr}$,
+$Q_\text{visc}$ as defined in Appendix~\ref{appendix:dynamics}, and cart
+position enforced as hard NLP constraints over the $N{=}10$ horizon.
+
+\paragraph{Beneficial model mismatch.}
+NMPC's internal model uses FWHM$=$42~mm for the arc's dip width, wider
+than the actual 20~mm. This wider-well approximation is beneficially
+conservative and produces smoother recoveries, gentler commands that
+avoid exciting the wall-bounce limit cycle
+(Appendix~\ref{appendix:results}), yielding \textbf{90\% hardware SR}
+(50 trials; first-order simulation predicts 100\%).
+
+\subsection{Reinforcement Learning}
+
+We train five algorithms in simulation using
+StableBaselines3~\cite{stable_baselines3} and \texttt{sb3\_contrib}:
+PPO, TRPO (on-policy, 16 parallel environments), and
+SAC, TD3, TQC (off-policy, single environment).
+PPO and TRPO use an MLP $[64,\,64]$ with \texttt{tanh} activations; the
+off-policy algorithms SAC and TQC use the StableBaselines3 default
+$[256,\,256]$, and TD3 its default $[400,\,300]$. Consistent with
+the main paper, on-policy algorithms (PPO, TRPO) train for 3M
+timesteps and off-policy algorithms (SAC, TD3, TQC) for 1M
+timesteps, at 20~Hz.
+
+\paragraph{Domain randomization (DR).}
+At each episode reset, physical parameters are sampled uniformly
+from ranges centered on measured values: gravity $\pm$0.5\%,
+arc radius $\pm$5\%, cart friction $\pm$56\%, ball rolling
+friction $\pm$60\%, ball viscous damping $\pm$67\%,
+motor lag $\tau_v \pm$33\%, dip depth $\pm$50\%,
+and dip width $\pm$40\%. Ranges are deliberately wide for
+parameters that are difficult to measure precisely (friction,
+damping) and narrow for well-characterized quantities (gravity,
+arc radius). The nominal values and absolute ranges are gravity
+$9.81\,[9.76, 9.86]$, arc radius $2.101\,[2.001, 2.201]$\,m, cart
+friction $0.08\,[0.035, 0.125]$, ball rolling friction
+$0.025\,[0.010, 0.040]$, ball viscous damping $0.009\,[0.003, 0.015]$,
+motor lag $\tau_v\ 0.15\,[0.10, 0.20]$\,s, dip depth
+$0.002\,[0.001, 0.003]$\,m, and dip width (FWHM)
+$0.020\,[0.012, 0.028]$\,m, all specified in
+\texttt{balancer/core/params.py}.
+
+\paragraph{Blind-zone modeling (BZ).}
+The simulation optionally clamps the $\theta$ observation to
+$\pm\theta_\text{blind}$ and sets the velocity observation to $\approx 0$
+when $|\theta| > \theta_\text{blind}$ (nominally 0.064\,rad from the sensor
+geometry; the measured onset is ${\approx}0.071$\,rad) to reproduce the
+VL53L0X minimum-range saturation
+(Appendix~\ref{appendix:sensor_characterization}). The exact onset
+$\theta_\text{blind}$ depends on the per-sensor calibration constants and
+physical mounting, so under domain randomization the threshold is
+sampled over $[0.060, 0.080]$\,rad rather than fixed. Combined with DR,
+this yields the best RL performance:
+PPO~(BZ+DR) achieves \textbf{96\% hardware SR}.
+
+% -- Parameter Table ------------------------------------------
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.15}
+\caption{Deployed Controller Parameters}
+\label{tab:controller_params}
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{llc}
+\toprule
+\textbf{Controller} & \textbf{Parameter} & \textbf{Value} \\
+\midrule
+PD+WO   & $K_p,\; K_d$              & 19.78,\; 1.37   \\
+        & $d_w,\; u_\text{ov}$      & 0.12~m,\; 0.5   \\
+\midrule
+LQR+WO  & $K$                       & $[0,\;0,\;{-19.78},\;{-1.37}]$ \\
+        & $d_w,\; u_\text{ov}$      & 0.12~m,\; 0.5   \\
+\midrule
+SMC+WO  & $\lambda,\; k,\; \phi$    & 3.0,\; 6.0,\; 0.806 \\
+        & $k_d$                     & 0.5              \\
+        & $d_w,\; u_\text{ov}$      & 0.12~m,\; 0.5   \\
+\midrule
+MPC+WO  & $Q,\; R,\; N$             & diag(0.001,0,40,0),\; 0.017,\; 10 \\
+        & $d_w,\; u_\text{ov}$      & 0.12~m,\; 0.5   \\
+\midrule
+NMPC    & $Q,\; R,\; N$             & diag(0,0,9,0),\; 0.006,\; 10 \\
+        & FWHM (internal)           & 42~mm            \\
+\midrule
+RL      & Architecture              & MLP [64,64] on-pol.; [256,256] off-pol. \\
+(online)& $\gamma,\; \lambda_\text{GAE}$ (on-pol.) & 0.99,\; 0.95 \\
+        & Training steps            & on-policy 3M; off-policy 1M  \\
+\midrule
+IQL     & Architecture              & MLP [256, 256], ReLU \\
+(offline)& Expectile, $\beta$        & 0.7,\; 3.0 \\
+        & Training data             & $\approx$333k real transitions (post-recalib) \\
+        & Gradient steps            & 280k (of 500k) \\
+\midrule
+MPPI    & Horizon $H$, samples $N$ & 30,\; 800 \\
+        & $Q$ cost                  & diag($0,0.1,30,0.1$) \\
+        & $R$, $\lambda$            & 0.001,\; 0.4 \\
+        & World model               & 2-layer LSTM, see App.~\ref{appendix:world_model} \\
+        & Runtime device            & CPU (faster than GPU for this small LSTM) \\
+        & PyTorch threads           & 1 (conservative; 4 threads gives 20.07\,ms) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Offline Reinforcement Learning (IQL)}
+\label{sec:iql_impl}
+
+In addition to simulation-trained online RL, we evaluate
+\emph{Implicit Q-Learning} (IQL)~\cite{kostrikov2022iql},
+an offline RL algorithm trained entirely on real hardware
+transitions from multiple controller families with no simulator access
+during training.
+
+\paragraph{Algorithm.}
+IQL avoids querying out-of-distribution actions by learning a
+state-value function $V(s)$ via expectile regression and
+extracting a policy through advantage-weighted regression:
+\begin{equation}
+  \pi(a|s) \propto \exp\!\bigl(\beta\,(Q(s,a) - V(s))\bigr)
+  \label{eq:iql_policy}
+\end{equation}
+where $\beta$ is the inverse temperature (\texttt{weight\_temp}).
+This avoids the need for pessimistic Q-value penalties (as in CQL)
+or a separate additive behavior-cloning penalty (as in TD3+BC), making IQL
+well-suited to narrow mixed offline datasets.
+
+\paragraph{Training data and hyperparameters.}
+IQL is trained on $\approx$333k real post-recalibration transitions
+(1{,}415 mixed-controller trials, no simulation data) with
+d3rlpy~2.8.1~\cite{seno2022d3rlpy}. The dataset composition, network
+sizes, and the full hyperparameter set (expectile 0.7,
+$\beta = 3.0$, and the 280k-step checkpoint selection) are given in
+Appendix~\ref{appendix:offline_rl}.
+
+\paragraph{Deployment.}
+The trained d3rlpy model is wrapped as an
+\texttt{OfflineRLController} that accepts the standard
+4-dimensional state and returns $u \in [-1,1]$ via deterministic
+policy inference (no action noise at deployment).

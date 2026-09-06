@@ -1,0 +1,310 @@
+\section{World Model RL Training}\label{appendix:world_model}
+
+This appendix reports on training PPO entirely inside a learned world model,
+replacing the physics simulator with a data-driven dynamics model.
+
+\subsection{World Model Architecture}
+
+The world model is a 2-layer LSTM~\cite{hochreiter1997lstm}
+(hidden dim $= 64$, sequence length $= 10$), implemented in
+PyTorch~\cite{paszke2019pytorch} and trained on a 1\,M-transition
+random-exploration dataset ($\sim$14 hours of operation; collection protocol
+in Appendix~\ref{appendix:dataset_details}). Its input is the
+concatenation of the current state
+$\mathbf{s}_t = [x_c, \dot{x}_c, \theta_b, \dot{\theta}_b]$ and the action
+$a_t$, and it predicts the state delta
+$\Delta\mathbf{s}_{t+1} = \mathbf{s}_{t+1} - \mathbf{s}_t$, with normalization
+statistics precomputed from the dataset (Fig.~\ref{fig:wm_arch}). We train it
+for 50 epochs, reaching a final training-set prediction MAE of 0.611 in the
+normalized state space.
+
+\paragraph{Training hyperparameters.}
+The model (hidden dim 64, 2 LSTM layers, dropout 0.2) is trained with the
+Adam optimizer at learning rate $10^{-4}$, batch size 256, over
+10-step sequences for 50 epochs. The objective is a per-dimension-weighted MSE
+on the predicted state delta $\Delta\mathbf{s}$, with weights $[1, 5, 1, 5]$
+on $[x_c, \dot{x}_c, \theta_b, \dot{\theta}_b]$ to emphasize the two velocity
+channels. The 1\,M-transition collection is split $80/10/10$ into
+train/validation/test, with normalization statistics computed on the training
+split only, and all seeding uses seed~42. When MPPI plans with
+this world model at deployment, we run it on CPU, which is faster than GPU for
+a network this small on our target hardware, and the per-step planning cost
+(about 40\,ms for 800 sampled rollouts over a horizon of 30) stays within the
+50\,ms control period. PPO-WM instead deploys only its trained policy network,
+so the world model runs online only under MPPI.
+
+\begin{figure}[!t]
+\centering
+\resizebox{0.98\columnwidth}{!}{%
+\begin{tikzpicture}[
+    >=Stealth,
+    every node/.style={font=\sffamily\small},
+    box/.style={
+        draw=black, thick, rounded corners, fill=white,
+        minimum height=1.0cm, align=center, inner sep=5pt
+    },
+    flow/.style={draw=black, thick, -{Stealth}},
+    skip/.style={draw=black, thick, dashed, -{Stealth}},
+    node distance=0.9cm and 1.1cm
+]
+\definecolor{cInput}{RGB}{222,235,247}
+\definecolor{cInputLine}{RGB}{91,143,185}
+\definecolor{cLSTM}{RGB}{226,239,218}
+\definecolor{cLSTMLine}{RGB}{112,160,90}
+\definecolor{cHead}{RGB}{252,235,212}
+\definecolor{cHeadLine}{RGB}{196,143,75}
+\definecolor{cDelta}{RGB}{237,224,237}
+\definecolor{cDeltaLine}{RGB}{150,110,150}
+\definecolor{cOutput}{RGB}{222,235,247}
+\definecolor{cOutputLine}{RGB}{91,143,185}
+
+% Layer 1
+\begin{scope}
+  \node[box, fill=cLSTM!40, draw=cLSTMLine, minimum width=2.4cm,
+        yshift=0.44cm] (lstm1b3) {};
+  \node[box, fill=cLSTM!40, draw=cLSTMLine, minimum width=2.4cm,
+        yshift=0.30cm] (lstm1b2) {};
+  \node[box, fill=cLSTM!60, draw=cLSTMLine, minimum width=2.4cm,
+        yshift=0.15cm] (lstm1b1) {};
+  \node[box, fill=cLSTM, draw=cLSTMLine, thick, minimum width=2.4cm] (lstm1)
+      {LSTM layer 1\\[-1pt]\tiny dim = 64};
+\end{scope}
+
+% Layer 2
+\begin{scope}[xshift=3.2cm]
+  \node[box, fill=cLSTM!40, draw=cLSTMLine, minimum width=2.4cm,
+        yshift=0.44cm] (lstm2b3) {};
+  \node[box, fill=cLSTM!40, draw=cLSTMLine, minimum width=2.4cm,
+        yshift=0.30cm] (lstm2b2) {};
+  \node[box, fill=cLSTM!60, draw=cLSTMLine, minimum width=2.4cm,
+        yshift=0.15cm] (lstm2b1) {};
+  \node[box, fill=cLSTM, draw=cLSTMLine, thick, minimum width=2.4cm] (lstm2)
+      {LSTM layer 2\\[-1pt]\tiny dim = 64};
+\end{scope}
+
+\begin{scope}[on background layer]
+\node[draw=cLSTMLine, thick, rounded corners, fit=(lstm1b2)(lstm2b2),
+      inner sep=16pt, fill=cLSTM!15] (lstmcluster) {};
+\end{scope}
+
+% Inputs
+\node[draw, rounded corners=2pt, inner sep=3pt, font=\sffamily\footnotesize,
+      above=1.3cm of lstm1] (concat) {concat};
+\node[box, fill=cInput, draw=cInputLine, minimum width=2.1cm,
+      above=0.8cm of concat, xshift=-1.7cm] (action)
+    {$a_t$\\[-1pt]\tiny action};
+\node[box, fill=cInput, draw=cInputLine, minimum width=3.6cm,
+      above=0.8cm of concat, xshift=1.8cm] (state)
+    {$s_t = (x_c,\dot{x}_c,\theta_b,\dot{\theta}_b)$\\[-1pt]
+     \tiny state};
+
+% Output head
+\node[box, fill=cHead, draw=cHeadLine, minimum width=2.1cm,
+      right=1.5cm of lstm2] (head)
+    {Linear\\head\\[-1pt]\tiny $64 \to 4$};
+\node[box, fill=cDelta, draw=cDeltaLine, minimum width=2.5cm,
+      right=1.1cm of head] (delta)
+    {$\Delta s_{t+1}$\\[-1pt]\tiny state delta};
+
+\node[fill=none, draw=none, font=\sffamily\Large,
+      above=1.3cm of delta] (add2) {$\oplus$};
+\node[box, fill=cOutput, draw=cOutputLine, minimum width=2.8cm,
+      right=1.1cm of add2] (output)
+    {$s_{t+1}$\\[-1pt]\tiny predicted next state};
+
+% Edges
+\draw[flow] (action) -- (concat);
+\draw[flow] (state) -- (concat);
+\draw[flow] (concat) -- (lstm1b3);
+\draw[flow] (lstm1) -- (lstm2);
+\draw[flow] (lstm2) -- (head);
+\draw[flow] (head) -- (delta);
+\draw[flow] (delta) -- (add2);
+\draw[flow] (add2) -- (output);
+
+\draw[skip] (state.east) -- ++(right:0.5cm)
+    |- node[pos=0.85, above, font=\sffamily\tiny] {$s_t$} (add2.west);
+
+\end{tikzpicture}%
+}
+\caption{World model architecture (v1).  Inputs $s_t$ (4-D state, z-score
+  normalized) and $a_t$ (scalar action, used in its original bounded scale)
+  are concatenated and fed through
+  a 2-layer LSTM (hidden dim $= 64$, dropout $= 0.2$).  A linear output
+  head maps to the 4-D state delta $\Delta s_{t+1}$; a skip connection
+  adds this to the current state to produce the predicted next state
+  $s_{t+1}$.}
+\label{fig:wm_arch}
+\end{figure}
+
+\subsection{Checkpoint Provenance and Sign Conventions}
+\label{appendix:wm_provenance}
+
+MPPI and PPO-WM use \emph{separate} LSTM checkpoints of the same
+architecture, trained on two distinct 1\,M-transition hardware
+collections whose difference is subtle but consequential for RL
+training. Both are released in the repository.
+
+\begin{table}[H]
+\centering
+\caption{World model checkpoint provenance.}
+\label{tab:wm_provenance}
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{lp{3cm}p{3cm}}
+\toprule
+\textbf{Property} & \textbf{MPPI ckpt} & \textbf{PPO-WM ckpt} \\
+\midrule
+Dataset & \texttt{arcball\_\allowbreak cont\_\allowbreak 1M\_\allowbreak calib196\_\allowbreak 160.h5} & \texttt{arcball\_\allowbreak cont\_\allowbreak 1M\_\allowbreak pre\_\allowbreak neg.h5} \\
+Sampling rate & 20\,Hz (50\,ms) & 20\,Hz (50\,ms) \\
+Cart-velocity sign & negated (positive = right) & raw encoder (positive = left) \\
+Action$\to$velocity $r$ & $+0.14$ (strong) & $\approx 0$ (negligible) \\
+Sim SR of PPO-WM & $\sim$60\% (wall-stuck) & $\sim$98\% (robust) \\
+Sim SR of MPPI & 100\% & N/A \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The two collections differ in their velocity-sign convention. The
+MPPI dataset was collected with the current serial reader, which negates
+the encoder velocity so that positive cart velocity = right in the
+Python state space. The PPO-WM dataset was collected earlier on a
+separate host whose reader stored the raw encoder velocity (positive =
+left). The resulting model shows only a delayed, weak action response on the
+cart-velocity channel: the per-step velocity change is dominated by encoder
+noise, so the immediate effect of the action on cart velocity is small (a
+response emerges only over several steps).
+This makes it robust to the sign mismatch at deployment and, as a side
+effect, prevents it from learning the non-physical through-wall motion
+that harms RL training on the MPPI checkpoint. We therefore ship
+PPO-WM on the pre\_neg checkpoint and MPPI on the calib196\_160 one;
+swapping them degrades PPO-WM to $\sim$60\% sim success (wall-stuck
+failures) and is not recommended. See \texttt{hardware/README.md} for the
+full sign-convention chain from PLC command to Python state.
+
+\subsection{PPO Training on World Model}
+
+We wrap the world model as a Gymnasium environment~\cite{towers2024gymnasium}
+(\texttt{BalancerWorldModel}) and train PPO inside it with 16 parallel
+environments (DummyVecEnv) for 3\,M timesteps, using the balanced reward and
+no domain randomization. Training takes about 42 minutes on CPU.
+
+\subsection{Results}
+
+\begin{table}[!t]
+\centering
+\caption{World-model-trained PPO vs.\ physics-trained PPO (50 hardware trials).
+  The PPO~(BZ+DR) baseline here is the S-curve development policy; Table~II
+  (main paper) reports the matched first-order-lag checkpoint at 96\%
+  (Appendix~\ref{appendix:rl_fairness}).}
+\label{tab:wm_results}
+\begin{tabular}{lcccc}
+\toprule
+Model & HW SR & HW Mean & HW Med & Sim Settle (S-curve) \\
+\midrule
+PPO (BZ+DR)           & 98\%   & 5.11\,s & 2.55\,s & 1.67\,s \\
+\textbf{PPO (WM)}     & \textbf{100\%} & 6.84\,s & \textbf{3.64\,s} & 1.74\,s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The world-model-trained agent achieves \textbf{100\% success rate} on hardware
+(50/50 trials), the only RL controller in the deployed 13-controller benchmark
+to reach perfect reliability.  The mean settling time is 6.84\,s (std=6.94\,s) but the
+median of 3.64\,s is more representative; a few difficult initial
+conditions produce outliers up to 26\,s.  In simulation (first-order motor model, 50 trials), it achieves
+98\% SR with 1.96\,s mean settling.
+
+\subsection{Data Size Sweep}
+
+To determine how much data the world model actually requires, we trained
+the same LSTM architecture on subsets of the random-exploration dataset
+ranging from 10k to 500k transitions (the main model used 1M). Open-loop
+prediction accuracy (short-horizon, 50 steps) and, for a subset,
+10-trial hardware validation under MPPI were evaluated for each model.
+
+\begin{table}[!t]
+\centering
+\caption{World model prediction error vs.\ training data size.
+  Per-channel MAE averaged over the $h=50$ (2.5\,s) rollout.
+  The reference analytical model achieves 0.475 total MAE over the same
+  rollout.}
+\label{tab:wm_data_sweep}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Transitions} & $x$ (m) & $\dot{x}$ (m/s) & $\theta$ (rad) & $\dot{\theta}$ (rad/s) \\
+\midrule
+10k  & 0.145 & 0.223 & 0.042 & 0.090 \\
+25k  & 0.091 & 0.148 & 0.044 & 0.077 \\
+50k  & 0.079 & 0.127 & 0.040 & 0.072 \\
+70k  & 0.084 & 0.130 & 0.040 & 0.071 \\
+100k & 0.080 & 0.123 & 0.037 & 0.069 \\
+150k & 0.075 & 0.117 & 0.039 & 0.070 \\
+200k & 0.073 & 0.116 & 0.042 & 0.071 \\
+300k & 0.070 & 0.111 & 0.040 & 0.070 \\
+400k & 0.074 & 0.118 & 0.038 & 0.068 \\
+500k & 0.072 & 0.112 & 0.036 & 0.069 \\
+1M   & 0.071 & 0.113 & 0.040 & 0.069 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Prediction accuracy plateaus around 50--100k transitions: from 100k
+onward the per-channel MAE stays within about $\pm0.01$ of the 1M model
+(at table precision), and
+scaling to 500k or 1M offers no meaningful improvement.  The 10k model
+is the only one noticeably worse (total MAE 0.499); it alone is
+comparable to the analytical model's total MAE of 0.475, while every
+model from 25k onward clearly outperforms the analytical reference.
+
+To confirm that the prediction plateau translates to controller
+performance, we ran 10 hardware trials of MPPI (the same tuning as the
+main world-model MPPI) on each trained model.
+
+\begin{table}[!t]
+\centering
+\caption{Hardware validation of MPPI on world models trained with
+different data sizes (10 trials each; the 1M reference row is the first
+10 trials of the 50-trial \texttt{MPPI\_v12} hardware run, as no separate
+1M sweep run was collected). SR: success rate;
+settling time reported as mean and median over successful trials.}
+\label{tab:wm_data_sweep_hw}
+\begin{tabular}{lccc}
+\toprule
+\textbf{WM data} & \textbf{HW SR} & \textbf{HW Mean} & \textbf{HW Median} \\
+\midrule
+50k            & 80\% (8/10)  & 7.03\,s  & 5.11\,s \\
+70k            & 100\% (10/10) & 9.65\,s  & 9.90\,s \\
+100k           & 70\% (7/10)  & 12.89\,s & 10.43\,s \\
+300k           & 100\% (10/10) & 5.30\,s  & 2.85\,s \\
+400k           & 100\% (10/10) & 10.18\,s & 6.42\,s \\
+500k           & 100\% (10/10) & 8.88\,s  & 8.83\,s \\
+1M (main)      & 100\% (10/10) & 1.90\,s  & 1.92\,s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The hardware results are noisier than the open-loop errors and only
+partly track the plateau: the 70k model reaches 10/10 while the 100k
+model reaches 7/10, even though its prediction MAE sits squarely on the
+plateau. Each point is a single 10-trial run, and every sweep model runs
+under the MPPI tuning optimized for the 1M main model, so a dip like the
+100k model's may come from a model-planner mismatch rather than from the
+data amount alone. The 1M main model sets the reference (100\% SR,
+1.90\,s mean), the lowest settling in the table. The supported finding is
+the open-loop one: prediction error, measured on the held-out validation
+split, plateaus by 50k to 100k transitions, well below our full
+collection. The hardware sweep gives the rough scale of the data
+requirement, not a precise threshold.
+
+We also tested a model trained on 70k transitions from a
+\emph{balanced demonstration} dataset (collected by a simple heuristic
+controller rather than random actions). With the same MPPI tuning as the
+main model, it achieves 80\% SR on 10 hardware trials with a mean
+settling of 15.3\,s, below the equivalent 70k random-exploration
+model (100\% SR, 9.65\,s). At equal data size, this structured-demonstration
+model did not match random exploration; richer demonstration data could
+narrow the gap, but these single runs do not show that structured collection
+lowers the data requirement.
+
+

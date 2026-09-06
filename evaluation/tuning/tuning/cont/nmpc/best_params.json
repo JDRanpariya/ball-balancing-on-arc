@@ -1,0 +1,9 @@
+{
+  "Q_diag": [0.0, 0.0, 9.0, 0.0],
+  "R": 0.006,
+  "N": 10,
+  "Ts": 0.05,
+  "FWHM": 0.042,
+  "tuned_on": "first_order",
+  "note": "Deployed NMPC params: Q=diag(0,0,9,0), R=0.006, N=10. No wall override (NMPC handles the rail through hard NLP cart constraints). Internal-model dip width FWHM=42mm (builder default). Reproduces first_order_classical.json NMPC_N10 SR=100% (50 stratified trials, seed 42)."
+}

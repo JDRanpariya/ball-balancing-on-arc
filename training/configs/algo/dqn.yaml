@@ -1,0 +1,10 @@
+# training/configs/algo/dqn.yaml
+
+_target_: stable_baselines3.DQN
+policy: "MlpPolicy"
+device: "cpu"
+learning_starts: 10000
+buffer_size: 100000
+exploration_fraction: 0.2
+exploration_final_eps: 0.05
+batch_size: 64

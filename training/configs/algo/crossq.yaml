@@ -1,0 +1,5 @@
+# configs/algo/crossq.yaml
+
+_target_: sb3_contrib.CrossQ
+policy: "MlpPolicy"
+device: "cpu"

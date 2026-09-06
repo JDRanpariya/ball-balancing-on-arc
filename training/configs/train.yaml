@@ -1,0 +1,48 @@
+hydra:
+  run:
+    dir: runs/${now:%Y-%m-%d_%H-%M-%S}
+  sweep:
+    dir: runs/multirun/${now:%Y-%m-%d_%H-%M-%S}
+    subdir: ${hydra.job.num}
+
+defaults:
+  - _self_
+  - env: sim.yaml
+  - wrappers: sim_wrappers.yaml
+  - algo: ppo.yaml
+
+model_path: null
+total_timesteps: 3000000
+progress_bar: True
+n_envs: 16
+
+# eval & early stopping
+evaluation:
+  early_stopping_reward_threshold: null # use null for no early stopping
+  deterministic: True
+  n_eval_episodes: 20
+  eval_freq: 5000 # set to null to disable evaluation and early stopping
+
+# reproducibility
+seed: 1
+cudnn_deterministic: True
+
+# plumbing/misc
+debug: False
+capture_video: True
+wandb:
+  entity: null
+  project: BalancerV3
+
+# resume training: load replay buffer and/or model
+replay_buffer_artifact: null
+model_artifact: null
+
+# logging
+save_model: True
+save_replay_buffer: False
+
+# model checkpoint
+checkpoint:
+  save_freq: 50000  # save every 50k steps
+  max_checkpoints: 50  # keep only last 50

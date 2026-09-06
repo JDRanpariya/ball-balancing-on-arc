@@ -1,0 +1,29 @@
+# Keep the Docker build context small and avoid shipping stale/generated
+# artifacts into the image. Only balancer/, paper/, evaluation/, training/,
+# data/, Makefile, and env.yaml are COPYed by the Dockerfile — everything
+# below is either never copied anyway (safety net for future Dockerfile
+# changes) or is a generated artifact that should be rebuilt fresh inside
+# the container rather than baked in stale.
+
+# VCS
+.git
+.git/lfs
+
+# Not needed inside the image / not COPYed by the Dockerfile
+website/
+output/
+.claude
+scratchpad/
+
+# Generated / stale artifacts — regenerated fresh by `make figures`,
+# `make eval-sim`, `make paper`, `make supplementary`, etc.
+evaluation/results/
+paper/ram/*.pdf
+paper/ram/supplementary/*.pdf
+
+# Caches, logs, OS cruft
+**/__pycache__
+**/__pycache__/
+**/*.pyc
+*.log
+.DS_Store

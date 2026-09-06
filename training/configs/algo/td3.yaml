@@ -1,0 +1,9 @@
+# configs/algo/td3.yaml
+
+_target_: stable_baselines3.TD3
+policy: "MlpPolicy"
+device: "cpu"
+action_noise:
+  _target_: stable_baselines3.common.noise.NormalActionNoise
+  mean: 0.0
+  sigma: 0.1

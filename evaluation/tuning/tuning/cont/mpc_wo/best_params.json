@@ -1,0 +1,11 @@
+{
+  "Q_diag": [0.001, 0, 40, 0],
+  "R": 0.017,
+  "N": 10,
+  "tau_v": 0.15,
+  "wall_margin": 0.12,
+  "override_gain": 0.5,
+  "cart_constraint": false,
+  "Ts": 0.05,
+  "tuned_on": "cont"
+}

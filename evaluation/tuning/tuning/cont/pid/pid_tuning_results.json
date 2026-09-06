@@ -1,0 +1,57 @@
+{
+  "tuning_config": {
+    "objective": "ISE (500*ise_theta + 20*ise_vel + 0.5*ise_u + 0.1*boundary_violations)",
+    "tuning_ics": 7,
+    "sim_T": 15.0,
+    "Ts": 0.05,
+    "plant": "s_curve, tau_v=0.15, delay=1"
+  },
+  "tuned_gains": {
+    "with_kx": {
+      "Kp": 13.848,
+      "Kd": 0.916,
+      "Kx": 0.372
+    },
+    "without_kx": {
+      "Kp": 19.782,
+      "Kd": 1.367,
+      "Kx": 0.0
+    }
+  },
+  "evaluation_summary": {
+    "PID+WO+Kx": {
+      "sr": 100,
+      "avg_settle": 3.116,
+      "max_settle": 8.65,
+      "avg_ise": 0.000208
+    },
+    "PID+WO_Kx0": {
+      "sr": 100,
+      "avg_settle": 3.181,
+      "max_settle": 8.15,
+      "avg_ise": 0.000152
+    },
+    "PID_vanilla+Kx": {
+      "sr": 69,
+      "avg_settle": 1.35,
+      "max_settle": 2.3,
+      "avg_ise": 0.00183
+    },
+    "PID_vanilla_Kx0": {
+      "sr": 88,
+      "avg_settle": 1.786,
+      "max_settle": 4.05,
+      "avg_ise": 0.000757
+    }
+  },
+  "conclusion": {
+    "best_variant": "PID+WO, Kx=0",
+    "reasoning": [
+      "100% success rate (vs 69-88% without wall override)",
+      "Lowest ISE (0.000152) - Kx=0 allows stronger Kp without conflict",
+      "Kx is unnecessary: wall override handles same-side, higher Kp handles centering indirectly",
+      "Kx HURTS: with Kx, Kp must be lower (13.8 vs 19.8) to avoid instability -> slower recovery on large theta"
+    ],
+    "kx_verdict": "Remove Kx. It conflicts with Kp and wall override renders it unnecessary."
+  }
+}

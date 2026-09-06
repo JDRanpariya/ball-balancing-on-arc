@@ -1,0 +1,18 @@
+{
+  "Q_diag": [
+    0.0,
+    1.0,
+    80.0,
+    1.0
+  ],
+  "R": 0.01,
+  "lambda_": 0.4,
+  "horizon": 15,
+  "n_samples": 800,
+  "checkpoint": "models/world_model/v1/best_model.pth",
+  "Ts": 0.05,
+  "tuned_on": "cont",
+  "method": "final_sweep",
+  "settled": 5,
+  "avg_settling_time": 11.464285714285714
+}

@@ -1,0 +1,15 @@
+Ts: 0.05
+action_type: cont
+description: PID_WO with -0.007 rad theta offset correction, 50 stratified trials
+env_label: nominal_ball
+motor_model: first_order
+name: exp1_pid_wo_offset_corrected_50t
+noise_sigma: 0.0
+num_trials: 50
+results_dir: results/real/pid_offset_correction
+resume: true
+run_time: 30.0
+settling_band: 0.01
+settling_duration: 1.0
+timestamp: '20260520_095440'
+velocity_band: 0.05

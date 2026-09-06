@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="Background" Id="{a474ab24-92b2-4faa-ab36-f1eb12602ab9}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Background
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*
+Background task - entry point.
+
+BackgroundEL() drives the SerialLineControl function block that services the
+EL6002 RS-232 terminal (channel 2, where the host PC is wired).
+SerialLineControl must be called every PLC cycle; at 115200 baud it is run
+from a fast task (PlcTask_Fast, <=1 ms) to avoid RX buffer overruns.
+*)
+
+BackgroundEL();
+]]></ST>
+    </Implementation>
+    <LineIds Name="Background">
+      <LineId Id="3" Count="10" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

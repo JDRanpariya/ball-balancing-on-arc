@@ -1,0 +1,218 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_SerialCom_Vel" Id="{b2e5adc5-d636-4c02-b7a6-90dc9253218b}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+FB_SerialCom_Vel - single-axis velocity bridge for the ball-on-arc cart.
+
+Protocol (EL6002 channel 2, 115200/8N1, STX/ETX-framed):
+  Host -> PLC : STX ' <velocity_mm_s> ' ETX
+                positive value -> negative axis direction (right in our rig)
+                negative value -> positive axis direction (left)
+                zero           -> decelerate to standstill
+  PLC  -> Host: STX ' <ActPos>,<ActVelo> ' ETX   every 10 ms
+
+Why one block for both action types:
+  The host sends discrete actions (+/- 900 mm/s or 0) and continuous actions
+  (arbitrary float mm/s) through the same format. MC_MoveVelocity with
+  MC_Aborting buffer mode accepts both cleanly, so the legacy MC_Jog variant
+  (archived under hardware/twincat/archive/ball_on_arc_jog_ARCHIVED) is no
+  longer used.
+
+Two MC_MoveVelocity instances are alternated so a new setpoint can abort the
+previous one without waiting for Done/Busy to clear.
+*)
+FUNCTION_BLOCK FB_SerialCom_Vel
+VAR_IN_OUT
+    TxBuffer        : ComBuffer;
+    RxBuffer        : ComBuffer;
+END_VAR
+
+VAR_OUTPUT
+    prediction      : UINT;
+END_VAR
+
+VAR
+    Timer               : TON;
+    fbSend              : SendString;
+    bSendBusy           : BOOL;
+    eSendErrorID        : ComError_t;
+
+    fbReceive           : ReceiveString;
+    sReceivedString     : STRING(80);
+    bStringReceived     : BOOL;
+    bReceiveBusy        : BOOL;
+    eReceiveErrorID     : ComError_t;
+    bReceiveTimeout     : BOOL;
+
+    parsedVelocity      : REAL;
+    directionForward    : BOOL;
+    directionBackward   : BOOL;
+
+    AxisB               : AXIS_REF;
+
+    McPower             : MC_Power;
+    McReset             : MC_Reset;
+    fbMoveVelocity1 : MC_MoveVelocity;
+    fbMoveVelocity2 : MC_MoveVelocity;
+    activeFB : BOOL := FALSE; // FALSE → fb1 is active, TRUE → fb2
+    moveActive : BOOL := FALSE;
+	prevVelocity : REAL := 0;
+	direction        : MC_Direction;
+    bufferMode : MC_BufferMode := MC_Aborting;
+
+    iState              : DINT;
+
+    varActPosString     : STRING(20);
+    varActValString     : STRING(20);
+
+	sLastReceivedString: STRING(255);
+	iStart: INT;
+	iLen: INT;
+	cleanedString: STRING(255);
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Call the send block every second to repeat the transmission.
+AxisB.ReadStatus();
+McPower(Axis := AxisB, Enable:=TRUE, Enable_Positive:=TRUE, Enable_Negative:=TRUE);
+McReset(Axis := AxisB);
+
+// Also call the block as long as it is busy to finish a transmission.
+Timer(IN:=TRUE, PT:=T#10MS);
+IF Timer.Q OR fbSend.Busy THEN
+	Timer(IN:=FALSE); (* reset timer *)
+	// Convert ActPos and ActVal to strings
+	varActPosString := TO_STRING(AxisB.NcToPlc.ActPos); // Convert ActPos to string
+	varActValString := TO_STRING(AxisB.NcToPlc.ActVelo); // Convert ActVelo to string
+	fbSend(	SendString:= CONCAT('$02 ', CONCAT(varActPosString, CONCAT(',', CONCAT(varActValString, ' $03')))),
+			TXbuffer:= TxBuffer,
+			Busy=> bSendBusy,
+			Error=> );
+	IF fbSend.Error <> COMERROR_NOERROR THEN
+		eSendErrorID := fbSend.Error;
+	END_IF
+END_IF
+
+//	Receive string data:
+//	The block receives any data strings beginning with a STX ($02) and ending with an ETX ($03) character.	
+fbReceive(
+	Prefix:= '$02',
+	Suffix:= '$03',
+	Timeout:= T#1s,
+	ReceivedString:= sReceivedString,
+	RXbuffer:= RxBuffer,
+	StringReceived=> bStringReceived,
+	Busy=> bReceiveBusy,
+	Error=> ,
+	RxTimeout=> bReceiveTimeout );
+	
+IF fbReceive.Error <> COMERROR_NOERROR THEN
+	eReceiveErrorID := fbReceive.Error;
+END_IF
+
+
+CASE iState OF
+
+    0: // Initial
+        McPower(Axis := AxisB, Enable:=TRUE, Enable_Positive:=TRUE, Enable_Negative:=TRUE);
+        McReset.Execute := TRUE; // Start reset
+        iState := 10;
+
+    10: // Drive Reset
+        McReset(Axis := AxisB); // Always call
+        IF McReset.Done THEN
+            McReset.Execute := FALSE;
+            iState := 20;
+        ELSIF McReset.Error THEN
+			McReset.Execute := FALSE;
+            iState := 999;
+        END_IF
+
+    20: // Wait for Power
+        IF McPower.Status THEN
+            iState := 30;
+        END_IF
+
+    30: // Velocity Control - Immediate override using MC_Aborting
+
+        // Always call both FBs to keep internal states updated
+        fbMoveVelocity1(Axis := AxisB);
+        fbMoveVelocity2(Axis := AxisB);
+
+        IF bStringReceived THEN
+            sLastReceivedString := sReceivedString;
+
+            iStart := FIND(sLastReceivedString, ' ') + 1;
+            iLen := FIND(sLastReceivedString, ' $03') - iStart;
+            cleanedString := MID(STR := sLastReceivedString, POS := iStart, LEN := iLen);
+
+            parsedVelocity := STRING_TO_REAL(cleanedString);
+
+            // Always act if velocity has changed (or first run)
+            IF NOT moveActive OR ABS(parsedVelocity - prevVelocity) > 0.01 THEN
+
+                // Choose direction, even if velocity is 0
+                IF parsedVelocity < 0 THEN
+                    direction := MC_Positive_Direction;
+                ELSE
+                    direction := MC_Negative_Direction;
+                END_IF
+
+                // Abort previous command and issue new one
+                IF NOT activeFB THEN
+                    fbMoveVelocity1.Execute := FALSE;
+                    fbMoveVelocity1(
+                        Axis := AxisB,
+                        Execute := TRUE,
+                        Velocity := ABS(parsedVelocity),
+                        Acceleration := 15000,
+                        Deceleration := 15000,
+                        Jerk := 50000,
+                        Direction := direction,
+                        BufferMode := MC_Aborting
+                    );
+                    fbMoveVelocity2.Execute := FALSE;
+                ELSE
+                    fbMoveVelocity2.Execute := FALSE;
+                    fbMoveVelocity2(
+                        Axis := AxisB,
+                        Execute := TRUE,
+                        Velocity := ABS(parsedVelocity),
+                        Acceleration := 15000,
+                        Deceleration := 15000,
+                        Jerk := 50000,
+                        Direction := direction,
+                        BufferMode := MC_Aborting
+                    );
+                    fbMoveVelocity1.Execute := FALSE;
+                END_IF
+
+                activeFB := NOT activeFB;
+                moveActive := parsedVelocity <> 0.0;
+                prevVelocity := parsedVelocity;
+            END_IF
+        END_IF
+
+        IF AxisB.Status.Error THEN
+            iState := 999;
+        END_IF
+
+    999: // Error recovery and restart
+        fbMoveVelocity1.Execute := FALSE;
+        fbMoveVelocity2.Execute := FALSE;
+        McReset.Execute := TRUE;
+        moveActive := FALSE;
+        prevVelocity := 0;
+        iState := 0;
+
+END_CASE
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_SerialCom_Vel">
+      <LineId Id="776" Count="3" />
+      <LineId Id="787" Count="42" />
+      <LineId Id="1638" Count="93" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

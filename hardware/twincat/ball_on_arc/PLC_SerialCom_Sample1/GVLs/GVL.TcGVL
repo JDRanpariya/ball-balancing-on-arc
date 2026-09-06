@@ -1,0 +1,14 @@
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.0.23">
+  <GVL Name="GVL" Id="{3e4349e6-a99a-4aa8-b94a-96e30307ccae}">
+    <Declaration><![CDATA[VAR_GLOBAL
+	// EL6002 channel used for host communication (2-port RS-232 terminal,
+	// host PC is wired to X2 / channel 2). Buffers are shared between the
+	// SerialLineControl background task and the SendString / ReceiveString
+	// blocks in FB_SerialCom_Vel.
+	RxBufferEL			: ComBuffer;	(* Receive data buffer *)
+	TxBufferEL			: ComBuffer;	(* Transmit data buffer *)
+END_VAR
+]]></Declaration>
+    <ObjectProperties />
+  </GVL>
+</TcPlcObject>

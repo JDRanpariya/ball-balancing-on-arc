@@ -1,0 +1,16 @@
+Ts: 0.05
+action_type: cont
+description: PPO trained on world model v11 (calib clean, 10ctx, 100 epochs, full
+  data, 3M steps), 10 stratified trials
+env_label: nominal_ball
+motor_model: first_order
+name: ppo_wm_v11_10t_hw
+noise_sigma: 0.0
+num_trials: 10
+results_dir: results/real/ppo_wm_v11
+resume: true
+run_time: 30.0
+settling_band: 0.01
+settling_duration: 1.0
+timestamp: '20260527_155609'
+velocity_band: 0.05

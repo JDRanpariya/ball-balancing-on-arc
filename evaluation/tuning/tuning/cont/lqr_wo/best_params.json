@@ -1,0 +1,16 @@
+{
+  "K": [
+    0.0,
+    0.0,
+    -19.782,
+    -1.367
+  ],
+  "Ts": 0.05,
+  "tau_v": 0.15,
+  "plant": "velocity",
+  "variant": "pidlike_wo_no_offset",
+  "wall_margin": 0.12,
+  "override_gain": 0.5,
+  "tuned_on": "cont",
+  "note": "Deployed LQR+WO: PD law used directly as state feedback (Kp=19.782, Kd=1.367, cart terms zero). K is set directly; no Q/R generates this gain (the loader reads K only). Matches evaluation/tuning/.../lqr/best_params.json."
+}

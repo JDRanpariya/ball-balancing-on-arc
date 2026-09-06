@@ -1,0 +1,5 @@
+# configs/algo/trpo.yaml
+
+_target_: sb3_contrib.TRPO
+policy: "MlpPolicy"
+device: "cpu"

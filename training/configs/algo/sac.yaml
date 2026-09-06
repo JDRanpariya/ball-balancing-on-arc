@@ -1,0 +1,5 @@
+# configs/algo/sac.yaml
+
+_target_: stable_baselines3.SAC
+policy: "MlpPolicy"
+device: "cpu"

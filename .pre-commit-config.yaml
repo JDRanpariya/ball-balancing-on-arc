@@ -1,0 +1,23 @@
+# See https://pre-commit.com for more information
+repos:
+  # Reject large files (> 1 MB) before they enter history
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=1024']        # 1 MB limit
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: detect-private-key
+
+  # Prevent committing to main/master by accident
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: no-commit-to-branch
+        args: ['--branch', 'main', '--branch', 'master']

@@ -1,0 +1,9 @@
+{
+  "Kp": 19.782,
+  "Ki": 0.0,
+  "Kd": 1.367,
+  "wall_margin": 0.12,
+  "override_gain": 0.5,
+  "Ts": 0.05,
+  "tuned_on": "cont"
+}

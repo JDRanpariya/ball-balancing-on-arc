@@ -1,0 +1,245 @@
+\section{Detailed Statistics and Per-Trial Data}
+\label{appendix:per_trial}
+
+\noindent\textit{This appendix provides per-stratum breakdowns and detailed statistics
+for individual controllers. The full 13-controller benchmark results
+(Table~II equivalent) are given in Table~\ref{tab:full_results} below.}
+
+\subsection{MPPI: Per-Stratum Breakdown (50 Trials)}
+
+\begin{table}[t]
+\centering
+\caption{MPPI hardware results by stratum.}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Difficulty} & \textbf{Trials} & \textbf{SR} & \textbf{Mean (s)} & \textbf{Med (s)} & \textbf{Max (s)} \\
+\midrule
+Center & 10 & 100\% & 1.82 & 1.29 & 4.59 \\
+Mid-rail & 16 & 100\% & 1.99 & 1.59 & 4.59 \\
+Near-wall & 14 & 100\% & 2.33 & 2.19 & 7.04 \\
+At-wall-opposite & 5 & 100\% & 2.52 & 2.69 & 4.19 \\
+At-wall-same & 5 & 100\% & 1.56 & 1.19 & 2.34 \\
+\midrule
+\textbf{Overall} & \textbf{50} & \textbf{100\%} & \textbf{2.06} & \textbf{1.67} & \textbf{7.04} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+MPPI's median settling varies little across strata: it barely
+moves with the starting position, from 1.19\,s at at-wall-same and 1.29\,s at
+center to 2.69\,s at at-wall-opposite, a spread of only about 1.5\,s despite
+the very different maneuvering room.
+
+\subsection{Complete Benchmark Results (All 13 Controllers)}
+
+Table~\ref{tab:full_results} reports the definitive 50-trial hardware
+benchmark for all 13 deployed controllers, sorted by hardware success
+rate then by mean settling time (the same controllers as Table~II of the main
+paper, extended here with the bootstrap settling-time confidence band and
+mean per-step compute time). SR 95\% confidence intervals are Wilson
+score intervals (matching Appendix~\ref{appendix:protocol} and the main paper);
+settling 95\% confidence intervals are bootstrap over the successful
+trials only, and the per-step compute time excludes sensor I/O. Two controllers (MPPI, PPO~(WM)) reach
+100\% SR; PPO~(BZ+DR) and PD+WO reach 96\%; the rest span
+80--92\%. The classical feedback laws, MPC+WO, and the on-policy RL policies PPO~(BZ+DR) and TRPO~(DR) run in under 1\,ms; IQL, NMPC, PPO-WM, and the off-policy RL policies
+(TD3, TQC, SAC) sit in the 2--8\,ms range; and only MPPI ($\sim$40\,ms)
+approaches the 50\,ms deadline.
+
+\begin{table*}[t]
+\centering
+\caption{Complete hardware benchmark: 50 trials per controller, 20\,Hz,
+stratified initial conditions. SR intervals are 95\% Wilson score intervals; settling intervals are 95\% bootstrap.}
+\label{tab:full_results}
+\begin{tabular}{llcccccc}
+\toprule
+\textbf{Controller} & \textbf{Paradigm} & \textbf{SR (\%)} & \textbf{SR 95\% CI}
+  & \textbf{Settle (s)} & \textbf{Settle 95\% CI} & \textbf{RMS Effort}
+  & \textbf{Compute (ms)} \\
+\midrule
+MPPI & Real-data & 100 & [93, 100] & 2.06 & [1.71, 2.44] & 0.354 & 40.0 \\
+PPO (WM) & Real-data & 100 & [93, 100] & 6.84 & [5.07, 8.95] & 0.492 & 6.7 \\
+PPO (BZ+DR) & Sim-trained RL & 96 & [87, 99] & 3.81 & [2.93, 4.78] & 0.498 & 0.59 \\
+PD+WO & Classical & 96 & [87, 99] & 5.80 & [4.08, 7.76] & 0.580 & 0.05 \\
+SMC+WO & Classical & 92 & [81, 97] & 8.93 & [7.33, 10.64] & 0.562 & 0.06 \\
+LQR+WO & Classical & 92 & [81, 97] & 10.21 & [7.76, 12.79] & 0.625 & 0.33 \\
+IQL & Real-data & 92 & [81, 97] & 10.62 & [8.54, 12.76] & 0.395 & 2.0 \\
+TD3 (DR) & Sim-trained RL & 92 & [81, 97] & 11.45 & [9.16, 13.87] & 0.680 & 7.9 \\
+NMPC & Predictive & 90 & [79, 96] & 7.48 & [5.19, 10.08] & 0.608 & 5.7 \\
+TRPO (DR) & Sim-trained RL & 90 & [79, 96] & 8.09 & [6.01, 10.43] & 0.508 & 0.67 \\
+TQC (DR) & Sim-trained RL & 86 & [74, 93] & 9.77 & [7.25, 12.39] & 0.663 & 7.9 \\
+SAC (DR) & Sim-trained RL & 82 & [69, 90] & 10.10 & [7.80, 12.42] & 0.588 & 7.8 \\
+MPC+WO & Predictive & 80 & [67, 89] & 10.81 & [8.04, 13.55] & 0.623 & 0.47 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\columnwidth]{figures/hw_sr_ranking.eps}
+  \caption{Hardware success rate ranking across all controllers
+    (50 trials each, 20~Hz, stratified ICs). Bars are colored by paradigm
+    (real-data, classical, sim-trained RL, and predictive), matching
+    Table~\ref{tab:full_results}. MPPI and PPO~(WM)
+    achieve 100\% SR; PPO~(BZ+DR) and PD+WO reach 96\%;
+    SMC+WO, LQR+WO, IQL~(offline), and TD3~(DR) reach 92\%.}
+  \label{fig:hw_ranking}
+\end{figure}
+
+\subsection{Failed Controller Variants (Excluded from Main Results)}
+
+Table~\ref{tab:failed_variants} lists controller variants excluded from
+the main benchmark. The first six did not reach our 50\% SR deployment
+threshold on hardware; PPO (base) and PPO (DR) are the un-augmented and
+DR-only PPO ablations (the deployed form is PPO~(BZ+DR)). They are reported here for completeness
+because their failure modes are the most instructive design lessons of the
+study: in every case the hardware collapse traces to a specific
+missing capability: absence of boundary handling (PD, LQR, SMC),
+a constraint formulation incompatible with the velocity-commanded actuator
+(MPC QP), or the sim-to-real gap left by not modeling the sensor blind zone
+or by omitting domain randomization (PPO base). Adding the wall-override
+heuristic or the blind-zone+DR training configuration lifts each of these to
+the corresponding +WO / +BZ+DR row of Table~\ref{tab:full_results}, which is
+why the deployed benchmark uses those augmented variants.
+
+\begin{table*}[t]
+\centering
+\caption{Excluded and ablation controller variants; the first six fall
+         below the 50\% deployment threshold on hardware (the two PPO
+         ablations reach 60\% and 90\%). Included for completeness,
+         these demonstrate the critical importance of constraint handling.
+         Sim SR is reported for the first-order-lag deployment regime; the
+         S-curve development regime scores these variants higher
+         (Appendix~\ref{appendix:rl_training}).}
+\label{tab:failed_variants}
+\begin{tabular}{lccp{7cm}}
+\toprule
+\textbf{Controller} & \textbf{HW SR} & \textbf{Sim SR} & \textbf{Failure Cause} \\
+\midrule
+PD (vanilla) & 18\% & 84\% & Positive-feedback runaway: ball drifts, controller saturates, cart hits wall \\
+LQR (basic) & 20\% & 84\% & No boundary awareness; nominal feedback runs out of rail at the limits \\
+SMC (basic) & 12\% & 14\% & Wide boundary layer ($\phi=0.85$) + no WO; controller too passive at limits \\
+MPC (QP constraints) & 44\% & 34\% & QP infeasibility near walls; constraint formulation incompatible with velocity interface \\
+LQR (Q-center) & 28\% & 100\% & Q-weighting on cart position ($K_x=3.31$) structurally insufficient for constraint handling \\
+SMC (full) & 24\% & 100\% & Centering + barrier terms do not overcome sensor-offset and blind-zone effects on hardware \\
+PPO (base, no DR) & 60\% & 100\% & Sim-to-real gap: blind zone not modeled; DR-induced robustness absent \\
+PPO (DR, no BZ) & 90\% & 100\% & Blind-zone (VL53L0X saturation) not modeled; residual sim-to-real gap (deployed form adds BZ) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Statistical Significance}
+
+We run pairwise Mann-Whitney $U$ rank tests with Bonferroni correction
+($\alpha = 0.05/78$ for 13 controllers) on the settling times of
+successful trials. Eighteen of the 78 pairs are significant; because these
+pairwise tests share trial data (many pairs involve a common controller),
+the Bonferroni correction is conservative here, so this count likely
+understates the number of true differences. MPPI is
+significantly faster than the slower nine controllers (PPO~(WM), LQR+WO, SMC+WO,
+TD3, IQL, TRPO, TQC, SAC, MPC+WO) but not than the other fast, reliable
+controllers (PPO~(BZ+DR), PD+WO, NMPC), which it beats by a large
+but sub-threshold margin (Cohen's $d$ of 0.70 to 0.90; e.g.\ 0.90 versus
+NMPC, 0.70 versus PPO~(BZ+DR)). Those three, together with PPO~(WM), form a
+fast cluster with no significant internal differences; the mid- and
+low-table controllers likewise separate into loose clusters with few
+significant differences inside each. Under Fisher's exact test with the
+same correction, no pairwise success-rate difference is significant, so
+the reliability ordering is practical rather than statistically certified.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\columnwidth]{figures/exp1_significance_heatmap.eps}
+  \caption{Pairwise settling-time significance for the 13 benchmarked
+    controllers (Mann-Whitney $U$ rank test on successful trials, Bonferroni
+    correction $\alpha = 0.05/78$; 18 of 78 pairs significant). Green cells
+    mark significant differences.}
+  \label{fig:significance}
+\end{figure}
+
+\subsection{Initial Condition Protocol}
+
+We displace the ball from center with a brief cart ``jolt/shake'', noting
+its direction post-hoc from the first sensor reading; the cart is moved
+automatically by the evaluation script, with no manual ball placement during
+trials. For the two at-wall strata the ball side is targeted, and the realized
+cart position and side (read per trial from the recorded initial state) vary
+somewhat from the nominal targets, as detailed in
+Appendix~\ref{appendix:protocol}.
+The five-stratum, 50-trial schedule
+(Center, Mid-rail, Near-wall, and the two at-wall strata) is specified in
+Appendix~\ref{appendix:protocol}.
+
+\subsection{Control Effort and Trajectory Shape}
+
+The qualitative differences behind these numbers show up in three views. The
+control-effort distributions (Fig.~\ref{fig:effort_boxplot}) put MPPI and IQL
+at the smooth, low-effort end and TD3 and TQC at the aggressive, high-effort
+end, matching their RMS-effort figures in Table~\ref{tab:full_results}.
+A per-controller gallery of representative ball-angle recoveries
+(Fig.~\ref{fig:multi_traj}, one panel per controller, each showing that
+controller's median-settling trial) shows the same contrast in recovery
+shape: MPPI and PD+WO settle within a few seconds with little overshoot,
+while the other wall-override classical controllers (LQR+WO, SMC+WO, MPC+WO)
+and the slower simulation-trained agents (SAC, TQC, TD3) take longer and hunt
+more before settling. Because each
+panel uses a different representative trial, these are illustrations of
+typical recovery shape, not a matched head-to-head comparison. The command profiles (Fig.~\ref{fig:action_profiles}) trace one clean recovery
+per controller; once the ball is settled the command drops to a small residual
+(last-second action RMS around 0.05--0.23 for these representative trials, well
+below the $\pm1$ saturation), so these clean-recovery exemplars settle to a
+small residual command.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\columnwidth]{figures/effort_boxplot.eps}
+  \caption{RMS control effort distribution over all trials.
+    MPPI and IQL produce the smoothest, lowest-effort control signals.
+    TD3 and TQC show the highest effort, indicating aggressive,
+    oscillatory control.}
+  \label{fig:effort_boxplot}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\columnwidth]{figures/compute_time_bars.eps}
+  \caption{Mean per-step compute time by controller. MPPI ($\sim$40\,ms)
+    runs close to the 50\,ms deadline (red dashed line). IQL, the off-policy
+    RL policies (TD3, TQC, SAC), PPO-WM, and NMPC form a second tier at
+    2--8\,ms; the classical controllers, MPC, and the on-policy RL policies
+    execute in under 1\,ms.}
+  \label{fig:compute_time}
+\end{figure}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/multi_controller_trajectory.eps}
+  \caption{Representative ball-angle recovery for each of the 13 benchmark
+    controllers. Each panel shows that controller's successful trial closest
+    to its own median settling time (orange dotted line: settling time;
+    green band: the $\pm$0.01\,rad settling window). Because each panel uses
+    that controller's own representative trial, the initial conditions differ
+    across panels, so this is a per-controller view of typical recovery shape
+    rather than a matched head-to-head. MPPI and PD+WO recover within a few
+    seconds; LQR+WO, SMC+WO, MPC+WO and the slower simulation-trained
+    agents (SAC, TQC, TD3) settle later.}
+  \label{fig:multi_traj}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/action_profiles.eps}
+  \caption{Control action profiles for all 13 benchmark controllers.
+    For each controller the shown trial is selected by a single uniform
+    rule: among successful trials that settled reasonably early
+    (settling time $\le 1.5\times$ that controller's median) and have at
+    least a 1\,s settled tail (episode length $\ge$ settling $+ 1$\,s),
+    keep those whose final-1\,s action RMS is within 10\% of that
+    controller's best, and pick the earliest-settling of those, i.e.\ a
+    clean, early-settling exemplar rather than a barely-settled outlier.
+    Shaded green band = the final 1\,s window; orange dotted line = the
+    trial's settling time. Last-1\,s action RMS is 0.05--0.23 across
+    controllers, i.e.\ commands are near zero once settled. Generated
+    from \texttt{paper/data/exp1\_hardware/consolidated.json} by
+    \texttt{regenerate\_extra\_figures.py}.}
+  \label{fig:action_profiles}
+\end{figure*}

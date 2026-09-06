@@ -1,0 +1,32 @@
+run_steps: 1000000
+action_type: cont
+control_period_s: 0.05
+hdf5_filename: dataset/arcball_cont_1M_pre_neg.h5
+save_every_n: 5000
+p_stick: 0.5
+vel_buffer_len: 3
+pos_buffer_len: 1
+vel_clip: 0.6
+pos_limit: 0.075
+columns:
+- prev_cart_pos
+- prev_cart_vel
+- prev_ball_pos
+- prev_ball_vel
+- action
+- cur_cart_pos
+- cur_cart_vel
+- cur_ball_pos
+- cur_ball_vel
+- reward
+- dip_reward
+system_constants:
+  arc_radius_m: 2.101
+  track_start_m: 0.2
+  track_end_m: 1.753
+  left_center_mm: 175
+  right_center_mm: 170
+  center_threshold_rad: 0.001
+_meta:
+  start_time: '2026-04-16 16:05:50'
+  host: Fraunhofer IIS hardware rig

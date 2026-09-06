@@ -1,0 +1,141 @@
+\section{Reproducibility Guide}
+\label{appendix:reproducibility}
+
+All code, trained models, datasets, and evaluation scripts are available at
+\url{https://github.com/JDRanpariya/ball-balancing-on-arc}, together with
+per-subdirectory READMEs that give exact run instructions. This appendix
+only summarizes what is where; please refer to the repository for commands.
+
+\subsection{Hardware}
+
+Table~\ref{tab:hw_components} lists the physical components of the
+ball-on-arc platform.
+
+\begin{table}[H]
+\centering
+\caption{Hardware components.}
+\label{tab:hw_components}
+\begin{tabular}{lp{5.2cm}}
+\toprule
+\textbf{Component} & \textbf{Specification} \\
+\midrule
+3D-printed cart & PLA; its top surface is the convex arc ($R = 2.101$\,m, $\approx$30\,cm span) with a shallow central dip (2\,mm deep, 20\,mm FWHM); rides the actuator carriage \\
+Ball & Steel, $m = 24$\,g, $r = 9$\,mm \\
+Linear actuator & SMC LEFB32NXS-1000, 1000\,mm belt-driven stroke~\cite{smc_lefb_catalogue} \\
+Servo motor \& drive & Beckhoff AM8121 motor via an EL7201 EtherCAT servo terminal \\
+Controller & Beckhoff C6015 IPC, TwinCAT~3 runtime \\
+Ball sensors & 2$\times$ VL53L0X ToF~\cite{vl53l0x_datasheet} at the arc edges (read alternately), plus a center IR beam-break, acquired by an Arduino Uno \\
+Host PC & Windows (TwinCAT), Python stack in WSL2; USB serial to the drive and Arduino \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Note on length units.}
+The rail provides approximately 1\,m of physical cart travel
+(1000\,mm actuator stroke), yet the drive reports positions at roughly
+twice that physical displacement, and the soft-limited operating window
+spans 1.553\,m in these axis units ($\pm 0.7765$\,m about the center).
+
+The factor comes from the drive's encoder scaling. The released NC
+configuration (\texttt{hardware/twincat/axis\_parameters.xml}) sets
+\texttt{ScaleFactorNumerator} $= 104.8576$ against
+\texttt{ScaleFactorDenominator} $= 1048576$, that is $10^{-4}$ axis
+units per encoder increment. With the EL7201 at its default 20
+single-turn bits ($2^{20}$ increments per revolution), this amounts to
+a feed constant of $104.8576$\,mm per motor revolution, which is the
+encoder count rescaled rather than a measured quantity. The belt drive
+advances $54$\,mm per revolution (the catalogued equivalent lead of the
+LEFB32 AC-servo variant), so reported positions run
+$104.8576/54 \approx 1.94$ times the physical ones. On that factor the
+operating window is about $0.80$\,m of the $1000$\,mm stroke, leaving
+roughly $0.10$\,m of margin at each end, which is what the mechanical
+end stops require.
+
+It affects
+no result: all positions, velocities, limits, identified dynamics, and
+results in the paper and code use these axis units consistently. The
+factor matters only when comparing quoted track lengths against the
+physical bill of materials.
+
+\subsection{Software}
+
+The reference environment pins Python~3.11, NumPy~2.2.6, SciPy~1.16.0,
+PyTorch~\cite{paszke2019pytorch} 2.10.0, Stable-Baselines3~\cite{stable_baselines3} 2.9.0,
+sb3-contrib~2.9.0, d3rlpy~\cite{seno2022d3rlpy} 2.8.1 (IQL), CasADi~\cite{casadi} 3.7.2 (NMPC),
+and OSQP~\cite{osqp} 1.1.3 (MPC); exact versions are locked in \texttt{env.yaml} and
+\texttt{requirements.lock.txt}.
+
+\subsection{Repository layout}
+
+\begin{itemize}
+  \item \texttt{balancer/} (core library): all 13 controllers, simulation and hardware environments, and PLC/sensor interfaces.
+  \item \texttt{hardware/}: bill of materials and assembly guide, 3D-print STLs, the TwinCAT project, Arduino sensor firmware, and wiring documentation.
+  \item \texttt{training/}: RL, offline-RL, and world-model training scripts and configuration files.
+  \item \texttt{evaluation/}: benchmark evaluation, controller tuning, and profiling scripts.
+  \item \texttt{data/}: datasets and data-driven models (including the 1M random-exploration dataset and the ${>}$1M-transition logged-trial archive).
+  \item \texttt{paper/}: paper source and the result data backing every table and figure.
+  \item \texttt{scripts/}: repository utilities.
+\end{itemize}
+
+\subsection{Sensor calibration (hardware runs only)}
+
+Reproducing figures and tables from the committed data needs no calibration.
+For fresh on-hardware campaigns, the two time-of-flight sensors are
+recalibrated first, following Stage~4 of the repository reproducibility guide:
+the calibration script prints the per-sensor center offsets, which are
+written back to \texttt{balancer/balancer/hardware/constants.py} once the two arc
+halves report a consistent zero (the deployed datasets use the recalibrated
+constants $189$/$158$~mm; the earlier $175$/$170$~mm values and the bias
+they left are analyzed in
+Appendix~\ref{appendix:sensor_characterization}). The offsets drift slowly, so we recalibrate before each new
+data-collection or evaluation campaign.
+
+\subsection{Reproducing the project}
+
+The repository is built to reproduce the whole project end to end, not only
+the paper's numbers. The step-by-step guide, \texttt{reproducibility\_guide.md},
+with the per-directory READMEs, documents the full pipeline: building and
+wiring the platform, deploying the PLC firmware, setting up the pinned
+environment, calibrating the sensors, collecting datasets, training the
+learning-based controllers, and evaluating all 13 controllers in simulation
+and on the rig. The paper's tables and figures, the simulation validation,
+and the wall-override ablations are the final stage of that pipeline and
+regenerate from the committed data through the documented scripts, with no
+hardware required. The master hardware-results file that backs Table~1 and the
+hardware figures is itself rebuildable from the per-controller run aggregates
+by \texttt{data/build\_consolidated.py}, which also emits the full
+source-to-entry provenance manifest and checks that the rebuild is
+byte-identical to the committed file. We do not duplicate the commands here.
+
+\subsection{Companion website}
+
+An interactive version of this benchmark, including the browser-based
+simulation and per-controller trial videos, is available at
+\url{https://ball-on-arc.pages.dev/}. The site carries no author,
+affiliation, or institution identifiers.
+
+\subsection{Key Parameters}
+
+Table~\ref{tab:critical_params} collects the experimental parameters
+held fixed across every benchmark trial.
+
+\begin{table}[H]
+\centering
+\caption{Critical experimental parameters.}
+\label{tab:critical_params}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Control frequency & 20\,Hz (50\,ms period) \\
+Trial duration & 30\,s maximum \\
+Settling band & $\pm 0.01$\,rad \\
+Settling duration & 1.0\,s continuous \\
+Random seed (ICs) & 42 \\
+Number of trials & 50 per controller \\
+ToF timing budget & 34.5\,ms \\
+Action range & $[-0.9, 0.9]$\,m/s (velocity set-point, axis units) \\
+Cart limits & $\pm 0.7765$\,m (axis units) \\
+\bottomrule
+\end{tabular}
+\end{table}

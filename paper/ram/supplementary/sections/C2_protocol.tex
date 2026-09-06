@@ -1,0 +1,171 @@
+\section{Evaluation Protocol}
+\label{appendix:protocol}
+
+
+\subsection{Initial Conditions and Success Criteria}
+\label{sec:ic_design}
+
+\textbf{Hardware trials.}
+We use a stratified initial condition (IC) design to ensure
+fair comparison across controllers with different constraint-handling
+capabilities. Strata are defined mainly by the cart's starting
+position (available maneuvering space), and at the rail by the targeted
+ball side. The cart is positioned automatically via closed-loop
+velocity control (P-controller, 10~mm tolerance), and the ball is
+displaced from center via brief cart jolts.
+
+The 50-trial schedule comprises five strata:
+\begin{itemize}
+    \item \textbf{Center (20\%, 10 trials):} Cart at $\pm 0.10$~m,
+          ball jolted off center.
+    \item \textbf{Mid-rail (32\%, 16 trials):} Cart at $\pm 0.40$~m,
+          ball jolted off center. Tests recovery
+          with asymmetric rail budget ($\sim$0.38~m one side,
+          $\sim$1.18~m other).
+    \item \textbf{Near-wall (28\%, 14 trials):} Cart at $\pm 0.65$~m,
+          ball jolted off center. Tests recovery
+          under tight constraints (only 0.13~m clearance on one side).
+    \item \textbf{At-wall-opposite (10\%, 5 trials):} Cart at
+          $\pm 0.78$~m (workspace limit, axis units), ball displaced to
+          \emph{opposite} side. Feasible for all controllers;
+          tests recovery speed.
+    \item \textbf{At-wall-same (10\%, 5 trials):} Cart at
+          $\pm 0.78$~m (workspace limit, axis units), ball displaced to
+          \emph{same} side as cart. Reveals structural limitations
+          of controllers without explicit constraint handling.
+\end{itemize}
+
+Trials alternate left/right within each stratum and are shuffled
+deterministically (seed~42) so every controller sees the identical
+sequence.  The schedule is logged alongside results for reproducibility.
+
+Beyond the ball-side selection in the two at-wall strata, the ball's
+initial angle $\theta_0$ is not controlled: it arises from
+the brief cart jolt used to displace the ball. Empirically,
+$\theta_0 \in [-0.091, 0.081]$~rad across the benchmark trials
+(mean $|\theta_0| \approx 0.062$~rad, standard deviation $\approx 0.019$~rad),
+and it stays in the same range in every stratum, with per-stratum mean
+$|\theta_0|$ ranging only from $0.059$~rad (at-wall-opposite) to $0.071$~rad
+(at-wall-same). The initial ball displacement is therefore comparable across
+strata, so stratum difficulty reflects maneuvering room rather than initial
+ball displacement.
+
+The jolt also places the ball outside the central dip in nearly every trial.
+With the surface parameters of Section~\ref{appendix:dynamics}, the dip's
+restoring region reaches only to $|\theta| \approx 0.0115$~rad. Released at rest
+inside that angle with the cart held still, the ball returns to center, and
+released outside it, the ball rolls away down the convex arc. All but five of the 650 benchmark trials start beyond that angle, at a
+mean $|\theta_0|$ some five times larger, so a controller has to carry the ball
+back across the destabilizing part of the arc before the dip can capture it.
+
+One caveat applies to the achieved cart start in the at-wall strata, where the
+cart is driven toward the rail ($|x_0| = 0.777$~m) before the ball is displaced.
+In the at-wall-\emph{same} stratum the cart reached the physical limit on about
+$83\%$ of the 13 benchmark controllers' trials, but this was not uniform across
+controllers: most reached the rail on all five trials, whereas for a few,
+notably NMPC and TD3, on three of their five trials the automated placement
+left the cart near center ($|x_0| \approx 0.08$~m) rather than at the rail, a
+materially easier start. Both still succeeded on all five, and within this stratum the
+success rate does not differ significantly between trials that reached the limit
+and those that did not ($50/54$ versus $9/11$; Fisher's exact test $p = 0.27$),
+so the effect on the reported comparison is small. The at-wall-\emph{opposite}
+stratum is less uniform still: the cart reached the limit for only some
+controllers and started nearer center ($|x_0| \approx 0.09$~m) for the others.
+We therefore read both at-wall strata as recovery-speed checks for the
+controllers that did not reach the rail, rather than strictly equal-condition
+cross-controller robustness comparisons.
+
+\textbf{Simulation controller benchmarks} (the RL and classical
+comparisons run in simulation) use the same 50-trial stratified schedule
+as the hardware protocol (cart at
+$\pm 0.10, \pm 0.40, \pm 0.65, \pm 0.78$~m). The simulator also provides a
+legacy uniform-sampling mode,
+\begin{align}
+  x_0 &\sim \mathcal{U}(-0.75,\;0.75)~\text{m}, \nonumber\\
+  \theta_0 &\sim \mathcal{U}(-0.074,\;0.074)~\text{rad}, \nonumber\\
+  \dot{x}_0 &= \dot{\theta}_0 = 0,
+\end{align}
+but it was not used for the reported benchmarks.
+
+\textbf{Success criterion.}
+A trial is \textbf{successful} if the ball angle satisfies
+\begin{equation}
+  |\theta(t)| < 0.01~\text{rad}
+\end{equation}
+\emph{continuously} for at least $1.0$~s.
+The \textbf{settling time} $t_s$ is defined as the wall-clock time at
+which the ball \emph{enters} this band and remains within it for the
+required duration (i.e.\ the entry instant, not the end of the window).
+The maximum trial duration is $30$~s; trials not meeting the settling
+criterion within this window are recorded as failures.
+
+\subsection{Performance Metrics}
+
+We evaluate controllers using the following metrics, computed with
+SciPy~\cite{2020SciPy-NMeth} and NumPy~\cite{harris2020array}:
+
+\begin{itemize}
+    \item \textbf{Settling time} ($t_s$): wall-clock time from trial start
+    until the success criterion is first met (as defined above). Medians,
+    interquartile ranges, and the settling significance tests are computed
+    over \emph{successful trials only}, matching the main paper's Table~II
+    statistics; success rate is reported separately, so reliability is not
+    folded into the settling comparison.
+
+    \item \textbf{Success rate}: fraction of trials with $t_s < 30.0$~s,
+    with 95\% Wilson score intervals. Wilson intervals replace a bootstrap
+    because a perfect $50/50$ record bootstraps to a degenerate
+    $[100, 100]$ interval, understating uncertainty at the boundary.
+
+    \item \textbf{Control effort}: root-mean-square commanded cart
+    velocity in m/s, saturated at the $\pm 0.9$~m/s axis limit the
+    actuator enforces, computed per trial and averaged over all trials.
+
+    \item \textbf{Significance testing.}
+    Pairwise Mann-Whitney $U$ rank tests
+    (\texttt{scipy.stats.mannwhitneyu}) on the successful-trial
+    settling distributions, Bonferroni-corrected~\cite{bonferroni1936teoria}
+    across all $\binom{13}{2}=78$ pairs ($\alpha_c = 0.05/78$). A rank test
+    is used because the settling distributions are right-skewed, so a
+    mean-based $t$-test is inappropriate. Success-rate differences use
+    Fisher's exact test (\texttt{scipy.stats.fisher\_exact}) over the same
+    family. Control-effort differences are tested the same way, as a separate
+Mann-Whitney family over the per-trial RMS effort across all $78$ pairs, with
+the full pairwise matrix written to \texttt{exp1\_effort\_significance.csv}.
+Effect sizes are reported as Cohen's $d$
+    ($d = (\bar{x}_i - \bar{x}_j)/s_{\mathrm{pooled}}$,
+    $s_{\mathrm{pooled}} = \sqrt{(s_i^2 + s_j^2)/2}$, equal-weight pooling)
+    to complement the $p$-values. Because the 78 pairwise tests are computed
+    on overlapping controller data rather than independent samples, the
+    Bonferroni correction is conservative here, so the number of pairs flagged
+    significant is best read as a lower bound. All statistics are reproduced by
+    \texttt{paper/scripts/compute\_statistics.py}.
+\end{itemize}
+
+\subsection{Experiment 1: Baseline Performance}
+
+\paragraph{Objective:}
+Establish the nominal performance hierarchy under realistic but
+unperturbed sensing conditions, using difficulty-stratified ICs that
+test regulation, recovery, and constraint handling.
+
+\paragraph{Protocol:}
+We evaluate each controller over 50 trials on the physical
+platform at the nominal control frequency of 20~Hz
+($T_s = 0.05$~s).
+Sensor readings use the 34.5~ms timing-budget sequential ToF
+configuration (Appendix~\ref{appendix:sensor_characterization}) with inherent noise
+($\sigma_{\text{ToF}} \approx 1.6$--$1.7$~mm at the arc center);
+no additional artificial noise is injected.
+
+\paragraph{Rationale:}
+The stratified IC design ensures that:
+(a) no controller is unfairly penalized by impossible starting
+conditions;
+(b) center strata establish baseline regulation performance;
+(c) near-wall/at-wall strata discriminate controllers by their
+constraint-handling and recovery capabilities;
+(d) the identical IC sequence across all controllers removes
+IC-related confounds from pairwise comparisons, with the exception of
+the achieved cart start in the two at-wall strata, which was not uniform
+across controllers (Section~\ref{sec:ic_design}).

@@ -1,0 +1,59 @@
+\section{Discussion and Conclusions}
+\label{sec:discussion}
+
+The controller choice posed at the outset has a conditional answer on this system.
+A practitioner who can gather hardware logs and afford real-time CPU rollouts should consider planning through a learned model: MPPI ties for the top success rate and settles fastest (100\%, 1.67\,s median).
+Reliability alone, however, cannot decide among the leaders: at 50 trials per controller the top group is statistically inseparable on success rate, and even MPPI's settling advantage, significant over nine of the twelve other controllers, does not separate it from PD+WO, PPO~(BZ+DR), or NMPC.
+The choice among the reliable controllers rests on the axes that do differ: settling consistency, control effort, deploy-time compute, and the engineering a team already has in place.
+Effort is one such axis the benchmark can resolve statistically, and there MPPI and IQL are significantly better than the remaining eleven.
+
+The engineering axis is the one most directly relevant to the classical result.
+An already running linear regulator can reach reliable hardware success on this system simply by handling the boundary constraint: the wall override alone lifted nominal LQR from 20\% to 92\% success.
+It follows that, for reliability in a constrained system like ours, the choice between a classical and a learned controller matters less than the decision to model the boundary at all.
+
+% For a practitioner the
+% classical-versus-learned decision, which absorbs a great deal of
+% attention, matters less for reliability on a constrained system like ours than
+% whether the boundary is handled at all, by a rule any of these controllers
+% can carry. We did not expect the four paradigms to sit this close together
+% on hardware, and their convergence once the boundary was handled surprised
+% us more than any single ranking.
+
+MPPI has a higher settling speed due to three mechanisms acting together: a model learned from hardware logs bridges the sim-to-real gap, sampling-based planning handles the boundary problem without a manual override, and replanning at every step absorbs the model error that remains.
+The drawbacks are the real-time CPU rollouts at every control period and a non-trivial tuning effort.
+
+We observe that the various approaches merely shift the engineering effort rather than remove it: analytical controllers need modeling and tuning, simulation-trained RL needs a simulator with credible sensor and motor models, offline RL needs logged trials, and model-based planning needs exploration data and a trained dynamics model.
+Therefore choosing among the reliable controllers is essentially choosing which of these inputs is most readily available.
+
+% MPPI earns its speed from three properties working together: a model
+% learned from hardware logs sidesteps the sim-to-real gap, sampling-based
+% planning keeps rollouts clear of the rail without a hand-written override,
+% and replanning at every step absorbs the model error that remains. The
+% price is real-time CPU rollouts at every control period, plus a tuning
+% effort that was not trivial. The approaches
+% shift the engineering effort rather than remove it: analytical controllers
+% need modeling and tuning, simulation-trained RL needs a simulator with
+% credible sensor and motor models, offline RL needs logged trials, and
+% model-based planning needs exploration data and a trained dynamics model.
+% A team choosing among the reliable controllers is really choosing which of
+% these inputs it can most readily produce.
+
+Our results suggest a pragmatic order of priorities for deploying a controller on a constrained system.
+One should begin with explicit constraint handling, the largest single lever on reliability we measured, worth 72 to 80 percentage points across the three classical controllers, whether through a boundary heuristic like our wall override or a formal method such as a control barrier function~\cite{ames2019control}.
+Where simulation fidelity is uncertain, logged hardware data deserves to be treated as a serious alternative to building a simulator: the three controllers built from it take the two highest success rates and the two lowest control efforts in the benchmark, and IQL's dataset accumulated as a by-product of ordinary evaluation runs rather than a dedicated collection.
+And once a policy is deployed, on-robot fine-tuning should not be counted on to rescue it.
+Over 50,000 hardware steps per policy, and with a noise-free reward signal that simulation cannot supply, fine-tuning left the world-model policy unchanged at 100\% and nominally degraded both simulation-trained agents, though those two arms rest on ten trials each; the supplement's fine-tuning appendix reports the study.
+
+One further observation reinforces the caution about simulation, which is that simulation rank does not forecast hardware rank: SAC balanced perfectly and settled quickly in simulation yet was the least reliable of the five on hardware, at 82\%, with only MPC+WO, at 80\%, ranking lower overall.
+With a single algorithm trained under its own conditions we only take this as a caution to bear in mind; our data do not establish it as a controlled effect.
+
+\subsection{Limitations and Future Work}
+
+These results are specific to our system: the quantitative ranking applies to this particular arc geometry, sensor characteristics, and control frequency, and it may shift on systems without hard constraint boundaries or with faster dynamics.
+Two rankings also depend on configuration choices documented in the supplement: PPO-WM's world model is trained on one of two logged collections whose data properties suit RL training, and the simulation-trained agents did not all use the same sensor model, since PPO~(BZ+DR) includes a blind-zone model the other four omit.
+The reinforcement-learning results are also single-seed: each agent was trained once (seed~1), so we report point estimates and do not characterize the training-stochasticity variance that a multi-seed study would expose.
+The families also differ in more than paradigm, in data source, model fidelity, tuning effort, boundary mechanism, and deploy-time compute, so we read the small cross-paradigm spread as constraint handling being decisive in this configuration rather than as an isolation of paradigm as a causal variable.
+
+We offer the qualitative findings, constraint awareness as the dominant lever, the training efficiency of modeling the dominant sensor failure, and the viability of real-data model-based planning, as conjectures to test on similar constrained underactuated systems; we make no claim for them beyond this platform.
+
+Natural next directions are to expand the platform toward more axes and higher dimensionality with a modified constraint structure, moving toward more complex underactuated systems, and to investigate uncertainty-aware exploration as an alternative to random data collection.

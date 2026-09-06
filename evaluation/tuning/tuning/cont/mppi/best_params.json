@@ -1,0 +1,12 @@
+{
+  "Q_diag": [0.0, 0.1, 30.0, 0.1],
+  "R": 0.001,
+  "lambda_": 0.4,
+  "horizon": 30,
+  "n_samples": 800,
+  "Ts": 0.05,
+  "tuned_on": "cont",
+  "method": "grid_sweep",
+  "settled": 44,
+  "total_trials": 50
+}

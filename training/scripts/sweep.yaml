@@ -1,0 +1,26 @@
+program: scripts/train.py
+method: grid
+
+# NOTE: env.reward values must match keys in balancer.envs.rewards.REWARDS.
+# Previous versions referenced ball_gaussian_distance_spread_{4,8,12,20} and
+# ball_exp_decay_reward_decay_{1,2,5}, none of which are registered - runs
+# using those values would fail immediately. Keep this sweep in sync with
+# balancer/envs/rewards.py: REWARDS.
+
+parameters:
+  algo.ent_coef:
+    values: [0.01, 0.1, 0.3]
+
+  env.reward:
+    values:
+      - ball_gaussian_distance    # Gaussian position x velocity penalty
+      - balanced                  # full dual-Gaussian + settling bonus
+      - balanced_no_effort        # same as balanced with effort and jerk zeroed
+      - balanced_no_settle        # balanced without the settling bonus
+      - balanced_narrow           # +/- 0.5 cm settling band
+      - balanced_wide             # +/- 2 cm settling band
+
+command:
+  - python
+  - scripts/train.py
+  - ${args_no_hyphens}

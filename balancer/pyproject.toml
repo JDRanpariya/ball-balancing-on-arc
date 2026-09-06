@@ -1,0 +1,49 @@
+# balancer/pyproject.toml
+
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name            = "balancer"
+version         = "0.0.1"
+description     = "Ball-on-arc balancing: Gymnasium envs, classical + RL controllers, hardware I/O."
+requires-python = ">=3.9"
+
+dependencies = [
+    "numpy",
+    "scipy",
+    "gymnasium",
+    "matplotlib",
+    "pyserial",
+    "pyyaml",
+    "h5py",
+    "stable-baselines3",
+    "sb3-contrib",
+    "moviepy",
+    "hydra-core",
+    "omegaconf",
+    "wandb",
+    "tensorboard",
+    "rich",
+    "tqdm",
+    "osqp",
+    "casadi",
+    "torch",
+    "d3rlpy",
+    "scikit-learn",
+    "pandas",
+    "seaborn",
+    "onnxruntime",
+    "cma",
+    "joblib",
+]
+
+[project.optional-dependencies]
+render = ["pygame"]
+all = [
+    "pygame",
+]
+
+[tool.setuptools.packages.find]
+include = ["balancer*"]

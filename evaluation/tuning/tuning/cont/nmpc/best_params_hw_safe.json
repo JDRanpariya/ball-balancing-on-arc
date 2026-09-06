@@ -1,0 +1,8 @@
+{
+  "Q_diag": [0.0, 1.0, 40.0, 1.0],
+  "R": 0.2,
+  "N": 20,
+  "Ts": 0.05,
+  "tuned_on": "cont",
+  "note": "HW-safe: velocity damping + higher input penalty + longer horizon"
+}

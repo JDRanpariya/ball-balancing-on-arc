@@ -1,0 +1,156 @@
+[
+  {
+    "name": "old_v1",
+    "Q2": 80,
+    "R": 0.01,
+    "lam": 0.4,
+    "H": 15,
+    "N": 800,
+    "settled": 7,
+    "total": 7,
+    "mean_settle": 4.89
+  },
+  {
+    "name": "q30_h25_n400",
+    "Q2": 30,
+    "R": 0.001,
+    "lam": 0.4,
+    "H": 25,
+    "N": 400,
+    "settled": 7,
+    "total": 7,
+    "mean_settle": 6.74
+  },
+  {
+    "name": "q30_h30_n400",
+    "Q2": 30,
+    "R": 0.001,
+    "lam": 0.4,
+    "H": 30,
+    "N": 400,
+    "settled": 7,
+    "total": 7,
+    "mean_settle": 7.16
+  },
+  {
+    "name": "q30_h35_n400",
+    "Q2": 30,
+    "R": 0.001,
+    "lam": 0.4,
+    "H": 35,
+    "N": 400,
+    "settled": 7,
+    "total": 7,
+    "mean_settle": 7.37
+  },
+  {
+    "name": "q30_h20_n400",
+    "Q2": 30,
+    "R": 0.001,
+    "lam": 0.4,
+    "H": 20,
+    "N": 400,
+    "settled": 7,
+    "total": 7,
+    "mean_settle": 8.64
+  },
+  {
+    "name": "q15_h30_n400",
+    "Q2": 15,
+    "R": 0.001,
+    "lam": 0.4,
+    "H": 30,
+    "N": 400,
+    "settled": 7,
+    "total": 7,
+    "mean_settle": 9.61
+  },
+  {
+    "name": "q50_h30_n400",
+    "Q2": 50,
+    "R": 0.001,
+    "lam": 0.4,
+    "H": 30,
+    "N": 400,
+    "settled": 7,
+    "total": 7,
+    "mean_settle": 9.65
+  },
+  {
+    "name": "q25_h30_n400",
+    "Q2": 25,
+    "R": 0.001,
+    "lam": 0.4,
+    "H": 30,
+    "N": 400,
+    "settled": 7,
+    "total": 7,
+    "mean_settle": 12.1
+  },
+  {
+    "name": "q40_h30_n400",
+    "Q2": 40,
+    "R": 0.001,
+    "lam": 0.4,
+    "H": 30,
+    "N": 400,
+    "settled": 7,
+    "total": 7,
+    "mean_settle": 12.14
+  },
+  {
+    "name": "q30_lam03_n400",
+    "Q2": 30,
+    "R": 0.001,
+    "lam": 0.3,
+    "H": 30,
+    "N": 400,
+    "settled": 7,
+    "total": 7,
+    "mean_settle": 12.82
+  },
+  {
+    "name": "q20_h30_n400",
+    "Q2": 20,
+    "R": 0.001,
+    "lam": 0.4,
+    "H": 30,
+    "N": 400,
+    "settled": 6,
+    "total": 7,
+    "mean_settle": 5.74
+  },
+  {
+    "name": "q30_lam05_n400",
+    "Q2": 30,
+    "R": 0.001,
+    "lam": 0.5,
+    "H": 30,
+    "N": 400,
+    "settled": 6,
+    "total": 7,
+    "mean_settle": 7.46
+  },
+  {
+    "name": "q30_r005_n400",
+    "Q2": 30,
+    "R": 0.005,
+    "lam": 0.4,
+    "H": 30,
+    "N": 400,
+    "settled": 5,
+    "total": 7,
+    "mean_settle": 6.95
+  },
+  {
+    "name": "q30_r01_n400",
+    "Q2": 30,
+    "R": 0.01,
+    "lam": 0.4,
+    "H": 30,
+    "N": 400,
+    "settled": 5,
+    "total": 7,
+    "mean_settle": 8.43
+  }
+]

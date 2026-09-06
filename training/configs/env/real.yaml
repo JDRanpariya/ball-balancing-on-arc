@@ -1,0 +1,13 @@
+defaults:
+  - _self_
+  - robot: robot
+
+_target_: balancer.envs.real.BalancerReal
+reward: "balanced"
+render_mode: null
+action_type: "cont"
+param_file: null
+speed_limits:
+  - 0.9
+  - 2.0
+

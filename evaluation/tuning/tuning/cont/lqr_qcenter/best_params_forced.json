@@ -1,0 +1,21 @@
+{
+  "Q_diag": [
+    0.6880995521686901,
+    0.5185047620867328,
+    20.445015423070583,
+    0.9682153862260867
+  ],
+  "R": 0.00015516,
+  "K": [
+    3.31393029,
+    2.32187392,
+    -29.33354213,
+    -1.5280156
+  ],
+  "Ts": 0.05,
+  "tau_v": 0.15,
+  "plant": "velocity",
+  "variant": "qcenter_forced",
+  "tuned_on": "cont",
+  "note": "Forced high Q[0,0] - passes 7/7 tuning ICs but 32% on 50-IC eval due to oscillations"
+}

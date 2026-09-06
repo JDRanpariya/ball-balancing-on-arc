@@ -1,0 +1,3 @@
+controller: MPPIController
+checkpoint: sweep_400k/best_model.pth
+data_size: 400000

@@ -1,0 +1,5 @@
+_target_: stable_baselines3.A2C
+policy: "MlpPolicy"
+device: "cpu"
+ent_coef: 0.01
+n_steps: 5

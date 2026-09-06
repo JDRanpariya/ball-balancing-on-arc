@@ -1,0 +1,10 @@
+# algo/qrdqn.yaml
+
+_target_: sb3_contrib.QRDQN
+policy: "MlpPolicy"
+device: "cpu"
+buffer_size: 100000
+learning_starts: 10000
+exploration_fraction: 0.2    
+exploration_final_eps: 0.05 
+batch_size: 64

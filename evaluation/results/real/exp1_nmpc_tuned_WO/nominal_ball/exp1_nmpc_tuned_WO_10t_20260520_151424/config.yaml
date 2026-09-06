@@ -1,0 +1,15 @@
+Ts: 0.05
+action_type: cont
+description: NMPC tuned CMA-ES N=16 FWHM=20mm WO(m=0.12,g=0.5) 10 trials
+env_label: nominal_ball
+motor_model: first_order
+name: exp1_nmpc_tuned_WO_10t
+noise_sigma: 0.0
+num_trials: 10
+results_dir: results/real/exp1_nmpc_tuned_WO
+resume: true
+run_time: 30.0
+settling_band: 0.01
+settling_duration: 1.0
+timestamp: '20260520_151424'
+velocity_band: 0.05

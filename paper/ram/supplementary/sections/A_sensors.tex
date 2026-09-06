@@ -1,0 +1,299 @@
+\section{Sensor Characterization}
+\label{appendix:sensor_characterization}
+
+
+\subsection{VL53L0X Time-of-Flight Sensor}
+
+The position sensor is one of the defining sources of difficulty on this
+platform, so we characterize its behavior carefully before turning to the
+controllers. Ball position is read by two VL53L0X (STMicroelectronics)
+Time-of-Flight sensors, each with a programmable timing budget that sets the
+integration time per measurement. We mount one at each end of the nearly
+30\,cm arc (radius 2.101\,m, approximately linear) so that whichever half of
+the arc the ball occupies is always read by the nearer sensor: the left sensor
+covers the left half, the right sensor the right half. This nominal span
+corresponds to $\pm 0.071$\,rad at $R = 2.101$\,m; logged ball angles
+occasionally reach the $\pm 0.081$\,rad empirical limit used elsewhere,
+because each sensor's 0--170\,mm range can report the ball marginally past the
+nominal arc ends. Both share a single I$^2$C bus,
+which precludes reading them simultaneously without interference.
+
+\subsection{Sequential Mode}
+
+In sequential mode we trigger and read the two sensors alternately. The
+total cycle time we measure follows
+$T_\text{cycle} \approx 2\times\text{budget} + 12\,\text{ms}$,
+where the $\sim$12\,ms overhead comes from the I$^2$C transactions and the
+inter-trigger delay. To map the tradeoff between noise and update rate, we
+held the ball static at three positions, the center of the arc and each
+extreme, and averaged 50 samples per position at four timing budgets
+(Table~\ref{tab:seq_char}). The minimum programmable budget is 20\,ms, which
+caps the sequential update rate at ${\approx}18.6$\,Hz.
+
+\begin{table*}[!t]
+\centering
+\caption{VL53L0X sequential mode characterization. All values are
+         mean\,$\pm\,\sigma$ (mm), averaged over 50 static measurements.
+         $^\dagger$Interpolated by applying the $\sigma$ scaling factor
+         observed across measured entries; means are physically stable.}
+\label{tab:seq_char}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{ccc cc cc cc}
+\toprule
+\multirow{2}{*}{\shortstack{\textbf{Budget}\\(ms)}}
+  & \multirow{2}{*}{\shortstack{\textbf{Cycle}\\(ms)}}
+  & \multirow{2}{*}{\shortstack{\textbf{Rate}\\(Hz)}}
+  & \multicolumn{2}{c}{\textbf{Center}}
+  & \multicolumn{2}{c}{\textbf{Left Extreme}}
+  & \multicolumn{2}{c}{\textbf{Right Extreme}} \\
+\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+ & & & $L$ & $R$ & $L_\text{min}$ & $R_\text{max}$
+       & $L_\text{max}$ & $R_\text{min}$ \\
+\midrule
+100  & 211.7 & 4.72  
+  & $161.80\pm0.85$ & $175.76\pm1.06$
+  & $48.32\pm0.99$         & $210.46\pm1.01$
+  & $181.22\pm0.97$        & $40.32\pm1.00$ \\
+50   & 113.2 & 8.84  
+  & $161.34\pm1.24$ & $175.46\pm1.51$
+  & $48.20\pm1.44^\dagger$ & $210.30\pm1.47^\dagger$
+  & $180.68\pm1.54$        & $40.58\pm1.14$ \\
+34.5 & 82.1  & 12.17 
+  & $160.54\pm1.62$ & $175.64\pm1.68$
+  & $48.08\pm1.90^\dagger$ & $210.12\pm1.93^\dagger$
+  & $180.44\pm2.11$        & $41.62\pm1.78$ \\
+20   & 53.8  & 18.59 
+  & $160.22\pm2.83$ & $176.42\pm2.81$
+  & $47.78\pm3.29^\dagger$ & $209.74\pm3.36^\dagger$
+  & $180.12\pm3.22$        & $42.34\pm3.01$ \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+Two systematic effects appear consistently across all configurations:
+
+\begin{enumerate}
+
+\item \textbf{Near-field blind zone:} The VL53L0X datasheet~\cite{vl53l0x_datasheet}
+(\S6) specifies a minimum measurable distance dependent on target
+reflectance and ambient IR levels.
+Below this threshold ($\approx$30--50\,mm in our configuration), the
+return photon pulse arrives before the SPAD timing gate opens, causing
+one of two failure modes:
+\begin{itemize}
+  \item The sensor reports \texttt{RangeStatus}~$= 4$ (signal fail),
+        which the firmware outputs as $-1$ and the host-side parser
+        rejects, the previous valid reading is held.
+  \item The sensor returns an erroneously large distance (typically
+        $\approx$40--48\,mm regardless of true position), which passes
+        the host-side validity check ($<300$\,mm) and is accepted as
+        a legitimate measurement.
+\end{itemize}
+
+\textbf{Effect on ball-angle estimation:}
+As the ball approaches the arc end nearest a sensor, the measured
+ball-to-sensor distance shrinks toward zero; near the edge it falls
+below the near-field threshold and the reading is no longer valid.
+The blind-zone onset occurs at approximately
+$\theta_\text{blind} \approx 0.071$\,rad.
+Beyond this angle, the reported position \emph{saturates}: the
+controller observes the ball at approximately 0.071\,rad, and when
+the ball is stationary or moving very slowly, the velocity estimate
+appears near zero, even as the true ball angle increases to 0.08\,rad.
+If the ball is moving through the blind zone at speed, the saturation
+duration is brief and typically inconsequential because the next
+reading captures the ball at a different position. When the ball
+reverses direction and exits the blind zone, normal tracking resumes.
+
+\item \textbf{Inter-sensor bias:} On this characterization unit the right
+sensor reads ${\approx}14$--$16$\,mm higher than the left at center despite
+symmetric physical placement. This is an intrinsic per-unit offset rather
+than a physical asymmetry: after a later sensor-board swap the deployed board
+carries the opposite bias, with the left sensor reading ${\approx}30$\,mm
+higher (Sec.~\ref{appendix:sensor_offset}). Either way the offset must be
+calibrated out so the two halves of the arc report a consistent zero.
+
+\end{enumerate}
+
+Measurement noise scales inversely with the timing budget, roughly tripling
+as the budget drops from 100\,ms to 20\,ms, so faster sensing comes directly
+at the cost of noisier readings.
+
+\subsection{Continuous Mode}
+
+Continuous mode ranges both sensors in parallel rather than alternately,
+so each unit runs on its own ${\sim}33$\,ms budget (nominally ${\sim}30$\,Hz)
+instead of the two sharing the ${\sim}82$\,ms sequential cycle (12\,Hz).
+We rejected it for two reasons. The first is optical crosstalk between the co-located
+sensors: the VL53L0X uses a 940\,nm VCSEL infrared
+emitter~\cite{vl53l0x_datasheet}, and when both emit at once, the signal from
+one is picked up by the other's receiver and corrupts the reading. The second
+is noise: even setting crosstalk aside, levels run roughly 5 to 30 times
+larger than in sequential mode at the same budget (Table~\ref{tab:cont_char}),
+enough to render position estimates unusable for control. We therefore use sequential
+mode throughout.
+
+\begin{table}[!t]
+\centering
+\caption{VL53L0X continuous mode at center position
+         (mean\,$\pm\,\sigma$, mm), 50 samples. Update rates were
+         not reliably characterized in this mode due to crosstalk
+         effects. $^\ddagger$Partial outlier
+         exclusion applied; fault rate 3--5\%.}
+\label{tab:cont_char}
+\begin{tabular}{ccc}
+\toprule
+\textbf{Budget (ms)} & $L$ (mm) & $R$ (mm) \\
+\midrule
+50   & $217.5\pm38.9$          & $117.2\pm10.0$ \\
+34.5 & $179.1\pm29.8^\ddagger$ & $144.0\pm8.9^\ddagger$ \\
+20   & $147.1\pm41.2$          & $170.9\pm38.1$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Simulation Sensor Model}
+\label{appendix:sensor_sim_model}
+
+To narrow the sim-to-real gap, our training environment
+(\texttt{BalancerSim}) reproduces three of these sensor effects:
+
+\begin{enumerate}
+  \item \textbf{Measurement staleness:} Ball position updates at
+        $\sim$10\,Hz (geometric inter-arrival, mean $= 2$ control steps).
+        Between updates the controller observes the last valid reading
+        (this matches the deployed effective ball-update rate quantified
+        in the selected-configuration subsection below).
+
+  \item \textbf{Observation noise:} Additive Gaussian noise with
+        $\sigma_\theta \approx 0.0005$--$0.002$\,rad
+        ($\approx 1.0$--$4.2$\,mm of arc, position) and
+        $\sigma_{\dot\theta} \approx 0.02$--$0.04$\,rad/s
+        ($\approx 42$--$84$\,mm/s, velocity, amplified by
+        finite-difference estimation).
+        In domain-randomization mode, $\sigma$ is sampled uniformly
+        each episode from the measured hardware range.
+
+  \item \textbf{Near-field blind zone (optional):}
+        When $|\theta_\text{true}| > \theta_\text{blind}$ (nominally
+        0.064\,rad from the sensor geometry; the calibrated measured
+        onset is 0.071\,rad, and both lie within the
+        $[0.060, 0.080]$\,rad range randomized under DR), the
+        ball-position observation is clamped to
+        $\pm\theta_\text{blind}$ and the velocity observation is set
+        to $\approx 0$.
+        This reproduces the saturation behavior described above:
+        the controller sees the ball ``stuck'' at the blind-zone boundary
+        while the true state continues evolving.
+        The feature is disabled by default
+        (\texttt{sensor\_blind\_zone=False}) and must be explicitly
+        enabled for training with blind-zone awareness. When combined
+        with domain randomization, the threshold is randomized over
+        $[0.060, 0.080]$\,rad.
+\end{enumerate}
+
+\subsection{Selected Configuration and Control Implications}
+
+We use the default 34.5\,ms timing budget in sequential mode for all
+experiments, which yields a 12.17\,Hz sensor update rate (82.1\,ms cycle)
+with ${\approx}1.6$--$1.7$\,mm noise at center. This budget is held fixed across
+all experiments so that observed performance differences
+reflect controller variation alone, not changes in sensor characteristics.
+Longer budgets offer marginal noise reduction at a disproportionate rate
+penalty; shorter budgets increase noise without sufficient rate benefit for
+the tested frequency range. All sensor readings are used raw without
+filtering to benchmark controller robustness under realistic sensing
+conditions. The 82.1\,ms cycle introduces position-measurement latency that
+exceeds the control period (50\,ms at 20\,Hz); all
+controllers therefore act on position data that may be up to one full
+sensor cycle old. In deployment the effective refresh is slower still:
+sampled by the 50\,ms control loop, the fused ball reading updates every
+one to two control cycles across the benchmark trials (median 100\,ms,
+mean 87\,ms, i.e.\ ${\sim}$10--12\,Hz effective). This is the rate the
+simulator's ${\sim}$10\,Hz ball-staleness model reproduces, so the
+training environment matches the deployed sensing rate rather than the
+faster 12\,Hz rate measured statically on the bench.
+
+\subsection{Calibration Offset}
+\label{appendix:sensor_offset}
+
+Post-hoc analysis revealed a systematic offset between the sensor-reported
+zero and the true physical center of the arc.  Using the IR beam-break
+sensor (which fires when the ball crosses the arc's lowest point) as
+ground truth, we measured the ToF sensor readings with the ball
+stationary at physical center (5000 samples, dip\,=\,1 for all):
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+ & Left sensor & Right sensor \\
+\midrule
+Measured at physical center & $193 \pm 4$\,mm & $160 \pm 5$\,mm \\
+Calibration used in code    & 175\,mm         & 170\,mm         \\
+Error                       & $+18$\,mm       & $-10$\,mm       \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+With the earlier code calibration (175/170), the \texttt{process\_dual\_sensors}
+routine reports $\theta \approx +4.8$\,mrad when the ball is at physical
+center (right sensor path: $-(160-170)/1000/2.101$), and across the
+175/170-era trial logs the median ball angle at dip\,=\,1 is $+7.14$\,mrad.
+Recalibrating the center constants to the measured equilibrium removes this
+residual: in the deployed datasets (\texttt{arcball\_cont\_1M\_calib196\_160},
+center constants 189/158) the median ball angle at dip\,=\,1 is
+$\approx 0$\,mrad.
+
+\textbf{Noise characterization:}  With the ball stationary at center, the
+left sensor spans 187--201\,mm and the right sensor spans
+151--168\,mm.  The per-sample standard deviation is
+approximately 3\,mm for the left sensor and up to 6\,mm for the right,
+the larger figure inflated by intermittent near-field fault readings;
+excluding those faults the robust spread is close to 3\,mm for both.
+Converted to angle, the typical per-reading noise is
+$\sigma_\theta \approx 3\,\text{mm}\, / \,2101\,\text{mm}
+\approx 1.4$\,mrad.
+The $\pm 4$\,mm and $\pm 5$\,mm figures in the calibration table are the
+per-sample spreads over these 5000 stationary, dip-gated samples.
+
+Because \texttt{process\_dual\_sensors} fuses the two units, the ball-angle
+estimate that controllers actually receive is tighter than either raw
+channel. Over the same stationary samples (from the deployed calibration,
+\texttt{arcball\_cont\_1M\_calib196\_160}) its standard deviation is
+$\sigma_\theta \approx 1.6$\,mrad ($\approx 3.3$\,mm of arc), with a
+peak-to-peak spread near 13\,mm. This is the figure quoted in the main
+paper; the 14--17\,mm per-unit spans above are the raw single-sensor
+peak-to-peak, so the two are consistent views of the same measurement.
+Either way, the deployed-board noise is roughly double the pre-swap
+figure and a substantial fraction of the $\pm$21\,mm success tolerance.
+
+\textbf{Note on Table~\ref{tab:seq_char} discrepancy:}
+The characterization table reports $L{=}161.8$, $R{=}175.8$ at center,
+which differs from the current $L{=}193$, $R{=}160$.  This data was
+collected prior to a hardware modification (sensor board swap)
+that changed the per-unit offsets.  The post-modification readings
+at true physical center are $L\approx 193$, $R\approx 160$.
+
+\textbf{Impact on experiments:}
+For the final benchmark (Experiment~1, Table~II in the main paper),
+the sensor offset is corrected by recalibrating the center reading:
+rather than subtracting a bias from raw readings, the
+\texttt{process\_dual\_sensors} routine was updated so that the
+center calibration constants produce $\theta = 0$ when the ball is
+at physical center.  After recalibration, the left and right baseline
+values are no longer 175 and 170; they reflect the new reference point
+such that center readings are $\theta \approx 0$ by default.
+The offset discussion above applies to earlier ablation runs and
+datasets collected before the correction was applied.  For those runs
+the bias is constant and smaller than the settling band ($\pm 10$\,mrad);
+its main effect is to lengthen settling times, though it also lowers
+success rate to a modest degree (for PD+WO, correcting the offset raises
+hardware SR from 88\% to 96\%, Appendix~\ref{appendix:implementation}),
+which is why it is corrected for the deployed benchmark.
+Because these per-unit offsets drift between sessions, recalibrating the
+center constants before each experiment campaign is necessary rather than
+optional; the specific constants quoted here are representative, and the
+exact deployed values vary from run to run. The recalibration procedure
+is documented in the reproducibility guide.

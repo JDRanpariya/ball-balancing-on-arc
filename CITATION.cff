@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: "If you use this benchmark, please cite the arXiv preprint below."
+title: "A Ball-on-Arc Benchmark: Classical and Learning-Based Control on Realistic Deployment Hardware"
+type: software
+authors:
+  - given-names: "Jaydeepkumar"
+    family-names: "Ranpariya"
+    orcid: "https://orcid.org/0009-0000-1967-9795"
+  - given-names: "Sandipan"
+    family-names: "Nath"
+    orcid: "https://orcid.org/0009-0008-4830-6451"
+  - given-names: "Alexander"
+    family-names: "Mattick"
+    orcid: "https://orcid.org/0000-0001-7805-199X"
+  - given-names: "Georgios"
+    family-names: "Kontes"
+    orcid: "https://orcid.org/0000-0001-7051-0960"
+  - given-names: "Tobias"
+    family-names: "Feigl"
+    orcid: "https://orcid.org/0000-0002-3040-3543"
+  - given-names: "Christopher"
+    family-names: "Mutschler"
+    orcid: "https://orcid.org/0000-0001-8108-0230"
+repository-code: "https://github.com/JDRanpariya/ball-balancing-on-arc"
+license: MIT
+preferred-citation:
+  type: article
+  title: "A Ball-on-Arc Benchmark: Classical and Learning-Based Control on Realistic Deployment Hardware"
+  authors:
+    - given-names: "Jaydeepkumar"
+      family-names: "Ranpariya"
+    - given-names: "Sandipan"
+      family-names: "Nath"
+    - given-names: "Alexander"
+      family-names: "Mattick"
+    - given-names: "Georgios"
+      family-names: "Kontes"
+    - given-names: "Tobias"
+      family-names: "Feigl"
+    - given-names: "Christopher"
+      family-names: "Mutschler"
+  year: 2026

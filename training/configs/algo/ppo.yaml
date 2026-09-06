@@ -1,0 +1,4 @@
+_target_: stable_baselines3.PPO
+policy: "MlpPolicy"
+device: "cpu"
+ent_coef: 0.01

@@ -1,0 +1,103 @@
+\documentclass[letterpaper, 10pt, conference]{IEEEtran}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{float}
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            citecolor=blue!60!black,
+            urlcolor=blue!60!black,
+            bookmarksnumbered=true,
+            pdftitle={A Ball-on-Arc Benchmark: Classical and Learning-Based Control on Realistic Deployment Hardware (Supplementary Material)},
+            pdfauthor={Jaydeepkumar Ranpariya; Sandipan Nath; Alexander Mattick; Georgios Kontes; Tobias Feigl; Christopher Mutschler},
+            pdfsubject={Supplementary material for an arXiv preprint}]{hyperref}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, fit, backgrounds, calc}
+\usepackage{caption}
+% Arabic table numbers: with 30+ tables, Roman numerals reach "Table XXX",
+% which reads like an unfilled placeholder. Arabic (Table 30) is clearer.
+\renewcommand{\thetable}{\arabic{table}}
+% IEEE-style figure/table captions: small bold label, ragged-right, tight spacing
+\captionsetup{font=small, labelfont=bf, labelsep=period,
+              justification=raggedright, singlelinecheck=false,
+              aboveskip=4pt, belowskip=2pt}
+\usepackage{listings}
+\lstset{basicstyle=\ttfamily\small,breaklines=true,frame=single,
+  backgroundcolor=\color{gray!8},xleftmargin=1em,xrightmargin=1em,
+  aboveskip=4pt,belowskip=4pt}
+
+\title{A Ball-on-Arc Benchmark: Classical and Learning-Based Control on Realistic Deployment Hardware\\\Large Supplementary Material}
+\author{
+Jaydeepkumar Ranpariya, Sandipan Nath, Alexander Mattick, Georgios Kontes, Tobias Feigl, and Christopher Mutschler\\
+Fraunhofer Institute for Integrated Circuits IIS, Nuremberg, Germany}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This document provides supplementary technical details for the main paper
+``A Ball-on-Arc Benchmark: Classical and Learning-Based Control on Realistic Deployment Hardware,'' organized into five parts.
+\emph{Part~I (System)} covers (I)~sensor characterization and calibration
+and (II)~the mathematical model of the plant.
+\emph{Part~II (Controller Implementation)} covers (III)~controller design,
+(IV)~classical controller tuning insights and failure modes,
+(V)~reinforcement learning training details including PPO ablation,
+multi-algorithm comparison, blind-zone ablation, motor-model ablation,
+offline RL, and sim-to-real transfer, (VI)~world-model RL training, and
+(VII)~MPPI controller tuning.
+\emph{Part~III (Experimental Setup)} covers (VIII)~the dataset collection
+protocol and (IX)~the evaluation protocol.
+\emph{Part~IV (Results and Discussion)} covers (X)~simulation validation
+of the analytical and learned dynamics models via open-loop prediction
+accuracy, (XI)~detailed statistics and per-trial data, (XII)~results,
+analysis, and discussion, and (XIII)~real-hardware fine-tuning.
+\emph{Part~V} is (XIV)~the reproducibility guide.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% Sections flow continuously (no forced per-section page breaks); the only
+% \clearpage is before the bibliography, to flush any pending floats.
+% ------------------------------------------------------------
+% PART I - System
+% ------------------------------------------------------------
+\input{sections/A_sensors}
+\input{sections/A2_dynamics}
+
+% ------------------------------------------------------------
+% PART II - Controller Implementation
+% ------------------------------------------------------------
+\input{sections/A3_implementation}
+\input{sections/E_classical_tuning}
+\input{sections/B_rl_training}
+\input{sections/G_world_model}
+\input{sections/H1_mppi_tuning}
+
+% ------------------------------------------------------------
+% PART III - Experimental Setup
+% ------------------------------------------------------------
+\input{sections/C_dataset}
+\input{sections/C2_protocol}
+
+% ------------------------------------------------------------
+% PART IV - Results
+% ------------------------------------------------------------
+\input{sections/D_sim_validation}
+\input{sections/H2_per_trial}
+\input{sections/H3_full_results}
+\input{sections/F_finetuning}
+
+% ------------------------------------------------------------
+% PART V - Reproducibility
+% ------------------------------------------------------------
+\input{sections/I_reproducibility}
+\clearpage
+
+\bibliographystyle{IEEEtran}
+\bibliography{bibliography}
+
+\end{document}

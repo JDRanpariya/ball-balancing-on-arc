@@ -1,0 +1,195 @@
+{
+  "description": "Historical sensor calibration log for ball-on-arc ToF sensors. Each entry records the LEFT and RIGHT sensor center_mm values at physical equilibrium (ball resting at arc center), plus the resulting SENSOR_OFFSET_RAD. The active values are always in constants.py:SystemConstants.",
+  "arc_radius_m": 2.101,
+  "units": "mm for center values, rad for offset",
+  "entries": [
+    {
+      "id": 1,
+      "date": "2026-01-01T00:00:00",
+      "note": "Initial factory/mounting calibration. Center values estimated from mechanical drawing. Offset not yet characterised.",
+      "LEFT_CENTER_MM": 175,
+      "RIGHT_CENTER_MM": 170,
+      "SENSOR_OFFSET_RAD": null
+    },
+    {
+      "id": 2,
+      "date": "2026-05-15T00:00:00",
+      "note": "First empirical equilibrium calibration. Ball held at physical center, sensors read LEFT=193 RIGHT=160. Residual +4.76 mrad absorbed as SENSOR_OFFSET_RAD=0.007 software correction rather than updating center_mm constants.",
+      "LEFT_CENTER_MM": 175,
+      "RIGHT_CENTER_MM": 170,
+      "equilibrium_left_mm": 193,
+      "equilibrium_right_mm": 160,
+      "SENSOR_OFFSET_RAD": 0.007
+    },
+    {
+      "id": 3,
+      "date": "2026-05-20T09:55:00",
+      "note": "Second empirical equilibrium calibration. Ball at physical center reads LEFT=196 RIGHT=144. RIGHT sensor drifted -16 mm since entry 2 (dominant source of offset drift). center_mm constants updated to equilibrium values directly; SENSOR_OFFSET_RAD set to 0.0.",
+      "LEFT_CENTER_MM": 196,
+      "RIGHT_CENTER_MM": 144,
+      "equilibrium_left_mm": 196,
+      "equilibrium_right_mm": 144,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 4,
+      "date": "2026-05-20T14:51:27",
+      "note": "Recalibration with ball at physical center. 1k raw sample median: LEFT=193 RIGHT=148.",
+      "LEFT_CENTER_MM": 193,
+      "RIGHT_CENTER_MM": 148,
+      "equilibrium_left_mm": 193,
+      "equilibrium_right_mm": 148,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 5,
+      "date": "2026-05-21T10:06:30",
+      "note": "Recalibration. Ball at physical center: LEFT=190mm RIGHT=159mm. Drift from previous: LEFT=-3mm RIGHT=+11mm. SENSOR_OFFSET_RAD set to 0.0.",
+      "LEFT_CENTER_MM": 190,
+      "RIGHT_CENTER_MM": 159,
+      "equilibrium_left_mm": 190,
+      "equilibrium_right_mm": 159,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 6,
+      "date": "2026-05-22T10:06:31",
+      "note": "website-video-collection",
+      "LEFT_CENTER_MM": 189,
+      "RIGHT_CENTER_MM": 158,
+      "equilibrium_left_mm": 189,
+      "equilibrium_right_mm": 158,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 7,
+      "date": "2026-05-29T14:12:35",
+      "note": "Auto-recalib exp2 after PPO_BZ_DR@5Hz. Avg drift (4 rounds): L=+23.5mm R=-123.5mm",
+      "LEFT_CENTER_MM": 212,
+      "RIGHT_CENTER_MM": 34,
+      "equilibrium_left_mm": 212,
+      "equilibrium_right_mm": 34,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 8,
+      "date": "2026-05-29T14:37:42",
+      "note": "Auto-recalib exp2 after TQC_DR@40Hz. Avg drift (4 rounds): L=+2.0mm R=+8.8mm",
+      "LEFT_CENTER_MM": 214,
+      "RIGHT_CENTER_MM": 43,
+      "equilibrium_left_mm": 214,
+      "equilibrium_right_mm": 43,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 9,
+      "date": "2026-05-29T14:39:23",
+      "note": "Auto-recalib exp2 after SAC_DR@5Hz. Avg drift (4 rounds): L=+2.0mm R=-9.2mm",
+      "LEFT_CENTER_MM": 216,
+      "RIGHT_CENTER_MM": 34,
+      "equilibrium_left_mm": 216,
+      "equilibrium_right_mm": 34,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 10,
+      "date": "2026-05-29T14:41:03",
+      "note": "Auto-recalib exp2 after SAC_DR@10Hz. Avg drift (4 rounds): L=-5.2mm R=+8.2mm",
+      "LEFT_CENTER_MM": 210,
+      "RIGHT_CENTER_MM": 42,
+      "equilibrium_left_mm": 210,
+      "equilibrium_right_mm": 42,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 11,
+      "date": "2026-05-29T14:44:24",
+      "note": "Auto-recalib exp2 after SAC_DR@40Hz. Avg drift (4 rounds): L=+2.8mm R=-8.5mm",
+      "LEFT_CENTER_MM": 213,
+      "RIGHT_CENTER_MM": 34,
+      "equilibrium_left_mm": 213,
+      "equilibrium_right_mm": 34,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 12,
+      "date": "2026-06-23T12:04:02",
+      "note": "Recalibration. Ball at physical center: LEFT=195mm RIGHT=160mm. Drift from previous: LEFT=-18mm RIGHT=+126mm. SENSOR_OFFSET_RAD set to 0.0.",
+      "LEFT_CENTER_MM": 195,
+      "RIGHT_CENTER_MM": 160,
+      "equilibrium_left_mm": 195,
+      "equilibrium_right_mm": 160,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 13,
+      "date": "2026-06-23T12:04:11",
+      "note": "Recalibration. Ball at physical center: LEFT=195mm RIGHT=164mm. Drift from previous: LEFT=+0mm RIGHT=+4mm. SENSOR_OFFSET_RAD set to 0.0.",
+      "LEFT_CENTER_MM": 195,
+      "RIGHT_CENTER_MM": 164,
+      "equilibrium_left_mm": 195,
+      "equilibrium_right_mm": 164,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 14,
+      "date": "2026-06-23T12:06:14",
+      "note": "Recalibration. Ball at physical center: LEFT=193mm RIGHT=163mm. Drift from previous: LEFT=-2mm RIGHT=-1mm. SENSOR_OFFSET_RAD set to 0.0.",
+      "LEFT_CENTER_MM": 193,
+      "RIGHT_CENTER_MM": 163,
+      "equilibrium_left_mm": 193,
+      "equilibrium_right_mm": 163,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 15,
+      "date": "2026-06-30T16:35:24",
+      "note": "Recalibration. Ball at physical center: LEFT=189mm RIGHT=159mm. Drift from previous: LEFT=-4mm RIGHT=-4mm. SENSOR_OFFSET_RAD set to 0.0.",
+      "LEFT_CENTER_MM": 189,
+      "RIGHT_CENTER_MM": 159,
+      "equilibrium_left_mm": 189,
+      "equilibrium_right_mm": 159,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 16,
+      "date": "2026-06-30T16:35:39",
+      "note": "Recalibration. Ball at physical center: LEFT=188mm RIGHT=163mm. Drift from previous: LEFT=-1mm RIGHT=+4mm. SENSOR_OFFSET_RAD set to 0.0.",
+      "LEFT_CENTER_MM": 188,
+      "RIGHT_CENTER_MM": 163,
+      "equilibrium_left_mm": 188,
+      "equilibrium_right_mm": 163,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 17,
+      "date": "2026-06-30T16:40:53",
+      "note": "Recalibration. Ball at physical center: LEFT=214mm RIGHT=38mm. Drift from previous: LEFT=+26mm RIGHT=-125mm. SENSOR_OFFSET_RAD set to 0.0.",
+      "LEFT_CENTER_MM": 214,
+      "RIGHT_CENTER_MM": 38,
+      "equilibrium_left_mm": 214,
+      "equilibrium_right_mm": 38,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 18,
+      "date": "2026-06-30T16:41:18",
+      "note": "Recalibration. Ball at physical center: LEFT=186mm RIGHT=160mm. Drift from previous: LEFT=-28mm RIGHT=+122mm. SENSOR_OFFSET_RAD set to 0.0.",
+      "LEFT_CENTER_MM": 186,
+      "RIGHT_CENTER_MM": 160,
+      "equilibrium_left_mm": 186,
+      "equilibrium_right_mm": 160,
+      "SENSOR_OFFSET_RAD": 0.0
+    },
+    {
+      "id": 19,
+      "date": "2026-07-21T10:00:31",
+      "note": "Recalibration. Ball at physical center: LEFT=192mm RIGHT=161mm. Drift from previous: LEFT=+6mm RIGHT=+1mm. SENSOR_OFFSET_RAD set to 0.0.",
+      "LEFT_CENTER_MM": 192,
+      "RIGHT_CENTER_MM": 161,
+      "equilibrium_left_mm": 192,
+      "equilibrium_right_mm": 161,
+      "SENSOR_OFFSET_RAD": 0.0
+    }
+  ]
+}

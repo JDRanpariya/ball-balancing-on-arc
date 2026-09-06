@@ -1,0 +1,16 @@
+Ts: 0.05
+action_type: cont
+description: PPO on WM v12, IC limited to 70% cart range during training (best reward
+  191.0), 10 stratified trials
+env_label: nominal_ball
+motor_model: first_order
+name: ppo_wm_v12_icfix_10t_hw
+noise_sigma: 0.0
+num_trials: 10
+results_dir: results/real/ppo_wm_v12_icfix
+resume: true
+run_time: 30.0
+settling_band: 0.01
+settling_duration: 1.0
+timestamp: '20260528_093533'
+velocity_band: 0.05

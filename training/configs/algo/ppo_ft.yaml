@@ -1,0 +1,8 @@
+# Fine-tuning PPO config - reduced LR for real hardware adaptation
+# n_steps/batch_size not overridden (use pretrained model's buffer settings)
+_target_: stable_baselines3.PPO
+policy: "MlpPolicy"
+device: "cpu"
+ent_coef: 0.005
+learning_rate: 0.0001
+n_epochs: 5

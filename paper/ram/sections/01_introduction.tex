@@ -1,0 +1,49 @@
+\section{Introduction}
+\label{sec:intro}
+
+Robots are leaving the laboratory for factories and commercial sites, where a controller has to work in a realistic environment.
+Deployed machines are assembled from parts chosen for cost and availability, so a precise industrial actuator often sits behind cheap sensors, or the other way around.
+Picking a controller for such a machine is as much a practical question as a theoretical one.
+Each option asks for something different up front: a classical law needs a model derived and tuned, a policy trained in simulation needs a simulator worth trusting, and a method learned from logs needs the logs collected on the machine.
+Some of them also require online compute.
+Model-based and learning-based control have both come a long way, so this is a real choice, and getting it wrong costs months of engineering.
+
+The rigs built for benchmarking often smooth away the frictions of a realistic deployment~\cite{quanser_qube2}, so doing well on such a platform says little about how a controller would behave once deployed.
+Nor do the comparisons themselves settle the choice, because methods are seldom measured against each other under the same conditions.
+Most benchmarking stays inside a single family: classical controllers compared with other classical controllers, learning methods with other learning methods~\cite{wellstead1978ballbeam,ho2010smc,mahmood2018benchmarking,guertler2023benchmarking}.
+The comparisons that reach across paradigms run in simulation~\cite{yuan2022safecontrolgym,akki2025benchmarking}, where the actuator and the sensors behave the way the simulator says they do.
+The one that reaches hardware shares a rig and a protocol but lets each team tune its own entry, so tuning and method are measured together~\cite{wiebe2025reinforcementlearningrobustathletic}.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\columnwidth]{\setupimg}
+  \caption{The ball-on-arc platform: a freely rolling ball on a shallow arc,
+    carried by a motorized linear cart.}
+  \label{fig:setup}
+\end{figure}
+
+Our main goal is to provide a reproducible hardware benchmark that allows for the replication of our results and the evaluation of other control strategies in a realistic deployment scenario.
+We built it around a ball rolling freely on a shallow arc carried by a motorized cart (Fig.~\ref{fig:setup}), where a controller steers the ball only indirectly, by moving the cart, until the ball balances at the center.
+The task is small and underactuated, and quick enough to run and reset that a full 13-controller benchmark fits into a few sessions at the rig.
+
+We drive the cart with an industrial servo through a belt, commanded via velocity; we track the ball with commodity sensors slower and noisier than what an ideal setup gives you; and the workspace has hard rail limits.
+These frictions are ordinary in a deployed machine and usually engineered out of a benchmark rig, and on this platform every controller has to face them~\cite{dulac2021challenges}.
+
+We ran thirteen controller configurations on the platform through the same four-state, scalar-command interface, each prepared the way its own paradigm asks (Tbl.~\ref{tab:controllers}).
+We group them as classical feedback (PD, LQR, and sliding-mode control), predictive control (MPC and NMPC), reinforcement learning trained in simulation (PPO~\cite{schulman2017proximal}, TD3, TQC, SAC, and TRPO), and methods built from logged hardware data, which either plan through a learned dynamics model with Model Predictive Path Integral control (MPPI~\cite{williams2017mppi}), train a policy inside one (PPO-WM), or learn a policy straight from the logs with Implicit Q-Learning (IQL~\cite{kostrikov2022iql}).
+We put each through the same 50-trial protocol from the same distribution of starting conditions, giving 650 hardware trials, and scored them on success rate, settling time, and control effort.
+Because we held the conditions identical throughout, the differences that emerge are not artifacts of the setup, though each pipeline still brings its own model, tuning, and boundary handling.
+
+In our trials, handling the boundary mattered more than the choice of controller family for reliability.
+Each of the three classical controllers corrects the ball, but doing so drives the cart to the end of the rail, where it cannot recover, and most of their trials fail.
+Adding a wall override without changing the gains lifts all three into the reliable group.
+Once the boundary is handled, every family has a controller that rarely fails.
+The families differ more on speed and effort, and there the clearest advantage came from learning a dynamics model on hardware data.
+Planning through such a model, MPPI succeeds on every trial, settles fastest, and uses the least control effort, in exchange for running model rollouts inside every control period.
+The protocol resolves only large differences, so we avoid reading a ranking into small ones.
+
+For reproducing the comparison and extending the platform, we release the hardware design, the controller implementations, the trained models, the random-exploration datasets, and the complete trial record.\footnote{\url{https://github.com/JDRanpariya/ball-balancing-on-arc}}
+
+The remainder of this article is organized as follows.
+Sec.~\ref{sec:related} positions the platform against prior work, Sec.~\ref{sec:system} describes the system, and Sec.~\ref{sec:controllers} the controllers.
+Sec.~\ref{sec:experiments} defines the evaluation protocol, Sec.~\ref{sec:results} reports the results, and Sec.~\ref{sec:discussion} distills the takeaways for practitioners.

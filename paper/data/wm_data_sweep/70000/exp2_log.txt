@@ -1,0 +1,19 @@
+============================================================
+  EXP 2: Long-Horizon Open-Loop Prediction
+============================================================
+
+Loading dataset...
+  Dataset: 1,000,000 transitions (last 1M)
+  Found 50/50 general starts
+  Using 50 segments, max_h=600
+
+Loading world model...
+  WorldModelPredictor(hidden=64, layers=2, device=cpu)
+  Analytical (best)         h=600: total=0.1568 (0.9s)
+  WorldModel (LSTM)         h=600: total=0.1092 (19.5s)
+
+  Saved /home/user/projects/ball-balancing-on-arc/paper/data/sim_validation/exp2_results.npz
+  72 arrays
+
+
+--- STDERR ---
