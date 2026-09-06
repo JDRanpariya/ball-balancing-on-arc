@@ -1,0 +1,666 @@
+---
+// Hero section with 3D physics-driven interactive simulation
+// Adapted from simulation/web/index.html (updated version with proper dynamics)
+---
+
+<section id="hero" class="relative min-h-screen flex flex-col items-center justify-center pt-16 px-4" aria-labelledby="hero-title">
+  <!-- Badge -->
+  <div class="mb-6 flex gap-3 flex-wrap justify-center">
+    <span class="px-3 py-1 text-xs font-medium rounded-full glass text-[var(--color-text-secondary)]">
+      arXiv Preprint
+    </span>
+  </div>
+
+  <!-- Title -->
+  <h1 id="hero-title" class="text-4xl md:text-6xl font-extrabold text-center max-w-4xl leading-tight tracking-tight text-[var(--color-text-primary)]">
+    Benchmarking Classical &amp; Learning-Based Control on a Real System
+  </h1>
+
+  <!-- Authors -->
+  <p class="mt-4 text-[var(--color-text-secondary)] text-sm md:text-base text-center">
+    Jaydeepkumar Ranpariya, Sandipan Nath, Alexander Mattick, Georgios Kontes,
+    Tobias Feigl, and Christopher Mutschler
+  </p>
+
+  <!-- 3D Interactive Scene -->
+  <div class="mt-10 w-full max-w-4xl">
+    <div
+      class="relative rounded-xl overflow-hidden border border-[var(--color-border)] glass"
+      role="application"
+      aria-label="Interactive 3D ball-on-arc simulation. Use mouse or arrow keys to control cart velocity."
+    >
+      <canvas
+        id="sim-canvas"
+        class="w-full h-[350px] md:h-[450px] cursor-crosshair"
+        aria-hidden="true"
+      ></canvas>
+      <!-- Overlay: state readout -->
+      <div
+        id="sim-state"
+        class="absolute top-3 left-3 max-w-[calc(100%-5rem)] md:max-w-none text-[10px] md:text-xs font-mono text-[var(--color-text-muted)] bg-[var(--color-surface)]/80 px-2 py-1 rounded"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        cart: 0mm / ±777mm | ball: 0.0° / ±4.6° | v_cmd: 0.00
+      </div>
+      <!-- Mode indicator -->
+      <div
+        id="sim-mode"
+        class="absolute top-3 right-3 text-xs font-medium text-[var(--color-accent-text)] bg-[var(--color-surface)]/80 px-2 py-1 rounded"
+        aria-live="polite"
+      >
+        Manual
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="mt-4 flex items-center justify-center gap-3 flex-wrap" role="toolbar" aria-label="Simulation controls">
+      <button
+        id="btn-manual"
+        class="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-fg)] hover:opacity-90 transition-opacity cursor-pointer"
+        aria-pressed="true"
+      >
+        Manual
+      </button>
+      <div class="relative inline-block">
+        <button
+          id="btn-ai"
+          class="px-4 py-2 text-sm font-medium rounded-lg glass text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+          aria-haspopup="listbox"
+          aria-expanded="false"
+        >
+          Let AI Balance ▾
+        </button>
+        <div id="ai-dropdown" class="hidden absolute bottom-full left-0 mb-2 w-36 glass rounded-lg shadow-xl z-50" role="listbox" aria-label="Select AI controller">
+          <button data-ctrl="ppo"  role="option" class="ctrl-option w-full px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer">PPO</button>
+          <button data-ctrl="td3"  role="option" class="ctrl-option w-full px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer">TD3</button>
+          <button data-ctrl="sac"  role="option" class="ctrl-option w-full px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer">SAC</button>
+          <button data-ctrl="tqc"  role="option" class="ctrl-option w-full px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer">TQC</button>
+          <button data-ctrl="trpo" role="option" class="ctrl-option w-full px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer">TRPO</button>
+          <div class="border-t border-[var(--color-border)] my-1"></div>
+          <button data-ctrl="pid"  role="option" class="ctrl-option w-full px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer">PD</button>
+          <button data-ctrl="lqr"  role="option" class="ctrl-option w-full px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer">LQR</button>
+          <button data-ctrl="smc"  role="option" class="ctrl-option w-full px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer">SMC</button>
+          <button data-ctrl="mpc"  role="option" class="ctrl-option w-full px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer">MPC</button>
+          <button data-ctrl="nmpc" role="option" class="ctrl-option w-full px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer">NMPC</button>
+        </div>
+      </div>
+      <button
+        id="btn-challenge"
+        class="px-4 py-2 text-sm font-medium rounded-lg glass text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+      >
+        Challenge
+      </button>
+      <span
+        id="challenge-timer"
+        class="hidden text-lg font-bold font-mono text-[var(--color-success)]"
+        aria-live="polite"
+        aria-label="Balance timer"
+      >
+        0.0s
+      </span>
+    </div>
+
+    <!-- Hint -->
+    <p class="mt-3 text-center text-xs text-[var(--color-text-muted)]">
+      Move mouse left/right to control cart · Scroll to zoom · Drag to orbit · Space to reset
+    </p>
+  </div>
+
+  <!-- Tagline -->
+  <p class="mt-8 text-center text-[var(--color-text-secondary)] max-w-xl text-sm md:text-base">
+    Can you keep the ball centered? Move your mouse to control the cart.
+    <br />
+    <span class="text-[var(--color-text-muted)]">
+      13 controllers competed to do this on real hardware: 50 trials each.
+    </span>
+  </p>
+
+  <!-- Quick links -->
+  <nav class="mt-8 flex items-center gap-4 flex-wrap justify-center" aria-label="Quick links">
+    <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/paper/README.md" target="_blank" rel="noopener noreferrer" class="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-fg)] hover:opacity-90 transition-opacity">
+      Paper
+    </a>
+    <a href="https://github.com/JDRanpariya/ball-balancing-on-arc" target="_blank" rel="noopener noreferrer" class="px-4 py-2 text-sm font-medium rounded-lg glass hover:bg-[var(--color-surface-hover)] transition-colors">
+      Code
+    </a>
+    <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/data/README.md" target="_blank" rel="noopener noreferrer" class="px-4 py-2 text-sm font-medium rounded-lg glass hover:bg-[var(--color-surface-hover)] transition-colors">
+      Dataset
+    </a>
+    <a href="#bibtex" class="px-4 py-2 text-sm font-medium rounded-lg glass hover:bg-[var(--color-surface-hover)] transition-colors">
+      BibTeX
+    </a>
+  </nav>
+</section>
+
+<script>
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+  // ===========================================================================
+  // PHYSICS: imports from shared simulation module (single source of truth)
+  // ===========================================================================
+  import { PARAMS, K_GAUSS } from '../scripts/simulation/params';
+  import {
+    alpha as _alpha, cEff as _Ceff, cEffPrime as _CeffPrime,
+    ballDerivatives as _ballDerivatives, ballStepRK4 as _ballStepRK4,
+    cartSubstepFirstOrder,
+  } from '../scripts/simulation/dynamics';
+
+
+
+  // State (SI units)
+  let state = { x: 0, xdot: 0, th: 0.02, thdot: 0 };
+  let v_cmd = 0;
+  let cartAccel = 0;
+
+  // Ball drop animation
+  let ballDropping = false;
+  let ballDropY = 63;  // first-load rest spawn (above all restY ~53-57, ensures visible)
+  let ballDropVel = 0;
+
+  // Mode
+  let mode: 'manual' | 'ai' | 'challenge' = 'manual';
+  let challengeTime = 0;
+  let challengeSettledTime = 0;
+  let challengeActive = false;
+  let bestTime = parseFloat(localStorage.getItem('arcball-best') || '0');
+
+  // Random IC generator: |th| >= 0.015 rad, cart from stratified bins
+  const CART_BINS = [-0.7765, -0.65, -0.4, -0.1, 0.1, 0.4, 0.65, 0.7765];
+  function randomIC(): [number, number, number, number] {
+    const cart_x = CART_BINS[Math.floor(Math.random() * CART_BINS.length)];
+    // Ball angle: uniform in [0.024, 0.060], random sign
+    const th_mag = 0.024 + Math.random() * (0.060 - 0.024);
+    const th = (Math.random() < 0.5 ? 1 : -1) * th_mag;
+    return [cart_x, 0, th, 0];
+  }
+
+  let isFirstReset = true;
+
+  function resetState() {
+    const ic = randomIC();
+    state = { x: ic[0], xdot: ic[1], th: ic[2], thdot: ic[3] };
+    v_cmd = 0;
+    cartAccel = 0;
+    challengeTime = 0;
+    if (isFirstReset) {
+      // First load: place ball just above rest so it's visible immediately
+      // (restY ranges ~53-57 depending on ball angle; 63 is above all).
+      // Drop animation only on subsequent spacebar resets.
+      ballDropping = false;
+      ballDropY = 63;
+      ballDropVel = 0;
+      isFirstReset = false;
+    } else {
+      ballDropping = true;
+      ballDropY = 120;
+      ballDropVel = 0;
+    }
+  }
+
+  // --- Dynamics helpers (thin wrappers around shared module) --------------
+  function alpha(th: number) { return _alpha(th); }
+  function ballStepRK4(th: number, thdot: number, xddot: number, dt: number): [number, number] {
+    return _ballStepRK4(th, thdot, xddot, dt);
+  }
+  function cartStep(x: number, xdot: number, vcmd: number, dt: number): [number, number, number] {
+    const tau = PARAMS.tau_v;
+    const decay = Math.exp(-dt / tau);
+    const xdot_new = vcmd + (xdot - vcmd) * decay;
+    const x_new = x + vcmd * dt + (xdot - vcmd) * tau * (1.0 - decay);
+    const xddot = dt > 0 ? (xdot_new - xdot) / dt : 0;
+    return [x_new, xdot_new, xddot];
+  }
+
+  function physicsStep(dt: number) {
+    dt = Math.min(dt, 0.016);
+    const n_sub = 10;
+    const sub_dt = dt / n_sub;
+
+    for (let i = 0; i < n_sub; i++) {
+      let effective_v = v_cmd;
+      if (state.x >= PARAMS.cart_limit && v_cmd > 0) effective_v = 0;
+      if (state.x <= -PARAMS.cart_limit && v_cmd < 0) effective_v = 0;
+
+      const [x_new, xdot_new, xddot] = cartStep(state.x, state.xdot, effective_v, sub_dt);
+      state.x = x_new;
+      state.xdot = xdot_new;
+      cartAccel = xddot;
+
+      if (Math.abs(state.x) > PARAMS.cart_limit) {
+        state.x = Math.sign(state.x) * PARAMS.cart_limit;
+        if (Math.sign(state.x) * state.xdot > 0) {
+          state.xdot = 0;
+          cartAccel = 0;
+        }
+      }
+
+      const [th_new, thdot_new] = ballStepRK4(state.th, state.thdot, xddot, sub_dt);
+      state.th = th_new;
+      state.thdot = thdot_new;
+
+      if (Math.abs(state.th) > PARAMS.ball_limit) {
+        state.th = Math.sign(state.th) * PARAMS.ball_limit;
+        if (Math.sign(state.th) * state.thdot > 0) {
+          state.thdot = -PARAMS.ball_restitution * state.thdot;
+        }
+      }
+    }
+
+    // Challenge mode: measures SETTLING TIME
+    // Time from challenge start until ball stays within settling band
+    // for 1 second continuously (same as eval_sim protocol)
+    if (mode === 'challenge' && challengeActive) {
+      challengeTime += dt; // total elapsed time
+      const ballPosMm = Math.abs(PARAMS.R * state.th * 1000);
+      if (ballPosMm < 7) { // within 7mm settling band (matches eval)
+        challengeSettledTime += dt;
+      } else {
+        challengeSettledTime = 0; // reset if leaves band
+      }
+      // Settled for 1 second continuously -> success!
+      if (challengeSettledTime >= 1.0) {
+        challengeActive = false;
+        if (bestTime === 0 || challengeTime < bestTime) {
+          bestTime = challengeTime;
+          localStorage.setItem('arcball-best', bestTime.toFixed(1));
+        }
+      }
+    }
+  }
+
+  // --- Controllers (exact ports from balancer.controllers with CMA-ES tuned params) --
+  import {
+    createController,
+    PIDController, LQRController, SMCController, MPCController, NMPCController,
+    type Controller, type ControllerName,
+  } from '../scripts/simulation/controllers';
+  import type { State } from '../scripts/simulation/dynamics';
+
+  let activeController = 'ppo';
+  let ctrlInstance: Controller | null = null;
+
+  // Bridge: Hero state object -> controller State tuple
+  function getStateTuple(): State {
+    return [state.x, state.xdot, state.th, state.thdot];
+  }
+
+  function runClassicalController() {
+    if (!ctrlInstance) return;
+    const s = getStateTuple();
+    let u = ctrlInstance.step(s, PARAMS.cart_limit);
+    u = Math.max(-1, Math.min(1, u));
+    v_cmd = Math.max(-PARAMS.max_cart_velocity, Math.min(PARAMS.max_cart_velocity, u));
+  }
+
+  // RL controllers: ONNX inference (actual trained policy networks)
+  // Fully lazy: onnxruntime-web only loads when an RL controller is selected.
+  type RLModelName = 'ppo' | 'td3' | 'sac' | 'tqc' | 'trpo';
+  const RL_MODELS: RLModelName[] = ['ppo', 'td3', 'sac', 'tqc', 'trpo'];
+  let onnxModule: { predict: Function; preloadModel: Function } | null = null;
+
+  let rlAction = 0;
+  let rlReady = false;
+  let rlPending = false;
+
+  async function loadOnnx() {
+    if (!onnxModule) {
+      onnxModule = await import('../scripts/simulation/onnx_inference');
+    }
+    return onnxModule;
+  }
+
+  function rlControl() {
+    if (!rlReady || rlPending) {
+      v_cmd = rlAction * PARAMS.max_cart_velocity;
+      return;
+    }
+    rlPending = true;
+    const obs: [number, number, number, number] = [state.x, state.xdot, state.th, state.thdot];
+    if (onnxModule) {
+      onnxModule.predict(activeController as RLModelName, obs).then((action: number) => {
+        rlAction = action;
+        rlPending = false;
+      }).catch(() => { rlPending = false; });
+    } else {
+      rlPending = false;
+    }
+    v_cmd = rlAction * PARAMS.max_cart_velocity;
+  }
+
+  function aiControl() {
+    const classicalNames = ['pid', 'lqr', 'smc', 'mpc', 'nmpc'];
+    if (classicalNames.includes(activeController)) {
+      runClassicalController();
+    } else if (RL_MODELS.includes(activeController as RLModelName)) {
+      rlControl();
+    }
+  }
+
+  // ===========================================================================
+  // THREE.JS SCENE (from simulation/web, side view default, 3x zoomed out)
+  // ===========================================================================
+  const canvas = document.getElementById('sim-canvas') as HTMLCanvasElement;
+  const stateEl = document.getElementById('sim-state')!;
+  const modeEl = document.getElementById('sim-mode')!;
+  const timerEl = document.getElementById('challenge-timer')!;
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 1, 5000);
+
+  // Default: side view
+  camera.position.set(900, 180, 0);
+
+  const controls = new OrbitControls(camera, canvas);
+  controls.target.set(0, 50, 0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.minDistance = 100;
+  controls.maxDistance = 5000;
+  controls.maxPolarAngle = Math.PI * 0.8;
+  controls.update();
+
+  // Lighting
+  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+  dirLight.position.set(200, 400, 300);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.set(1024, 1024);
+  scene.add(dirLight);
+  const fillLight = new THREE.DirectionalLight(0x4fc3f7, 0.8);
+  fillLight.position.set(-200, 100, -100);
+  scene.add(fillLight);
+  const backLight = new THREE.DirectionalLight(0xffffff, 0.5);
+  backLight.position.set(0, 200, -300);
+  scene.add(backLight);
+
+  // Ground
+  const groundGeo = new THREE.PlaneGeometry(3000, 3000);
+  const groundMat = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.8 });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -50;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Materials
+  const cartMat = new THREE.MeshStandardMaterial({ color: 0xfaf5e8, roughness: 0.6, metalness: 0.05 });
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.3, metalness: 0.7 });
+  const railMat = new THREE.MeshStandardMaterial({ color: 0xd0d0d0, roughness: 0.15, metalness: 0.95 });
+  const glassMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.1,
+    roughness: 0, metalness: 0, transmission: 0.95, ior: 1.5,
+    thickness: 3, side: THREE.DoubleSide, depthWrite: false,
+  });
+
+  // Groups
+  const cartGroup = new THREE.Group();
+  scene.add(cartGroup);
+  const railStaticGroup = new THREE.Group();
+  scene.add(railStaticGroup);
+
+  // Point light inside cart
+  const ballLight = new THREE.PointLight(0xffffff, 1.0, 300);
+  ballLight.position.set(0, 80, 0);
+  cartGroup.add(ballLight);
+
+  // Load STLs
+  const loader = new STLLoader();
+  const ROT = new THREE.Euler(-Math.PI / 2, 0, 0);
+
+  const BASE = import.meta.env.BASE_URL || '/';
+  function loadSTL(filename: string, material: THREE.Material, parent: THREE.Object3D, offset?: THREE.Vector3) {
+    const url = BASE + 'assets/' + filename;
+    loader.load(url, (geometry) => {
+      geometry.computeVertexNormals();
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.rotation.copy(ROT);
+      if (offset) mesh.position.copy(offset);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+    }, undefined, (err) => {
+      console.error('Failed to load STL:', url, err);
+    });
+  }
+
+  // Cart parts
+  loadSTL('cart.stl', cartMat, cartGroup);
+  loadSTL('glass-1.stl', glassMaterial, cartGroup);
+  loadSTL('glass-2.stl', glassMaterial, cartGroup);
+  loadSTL('base-part-2.stl', baseMat, cartGroup);
+  loadSTL('base-part-1.stl', baseMat, cartGroup);
+
+  // Rail (static)
+  loadSTL('motor-rail.stl', railMat, railStaticGroup, new THREE.Vector3(0, 0, 641));
+
+  // Ball (child of cartGroup)
+  const ballGeo = new THREE.SphereGeometry(PARAMS.r * 1000, 32, 32);
+  const ballMat2 = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.2, metalness: 0.6 });
+  const ballMesh = new THREE.Mesh(ballGeo, ballMat2);
+  ballMesh.castShadow = true;
+  ballMesh.receiveShadow = true;
+  ballMesh.renderOrder = 1;
+  cartGroup.add(ballMesh);
+
+  // --- Update visuals ----------------------------------------------------
+  function updateVisuals() {
+    // Cart position (m -> mm, scaled 0.5x to fit rail)
+    cartGroup.position.z = -state.x * 1000 * 0.5;
+
+    // Ball position on arc (local to cart)
+    // Visual scaling: physics ball_limit=0.081 maps to visual limit=0.065
+    // so ball stays within cart walls in the 3D scene
+    const VISUAL_LIMIT = 0.065;
+    const th_visual = state.th * (VISUAL_LIMIT / PARAMS.ball_limit);
+    const ballZ_local = -PARAMS.R * Math.sin(th_visual) * 1000;
+    const R_mm = PARAMS.R * 1000;
+    const totalSag = R_mm - Math.sqrt(R_mm * R_mm - 145 * 145);
+    const localDrop = R_mm - Math.sqrt(R_mm * R_mm - ballZ_local * ballZ_local);
+    const innerFloor = 43.5;
+    const ballRadius_mm = PARAMS.r * 1000;
+
+    // Gaussian dip (use visual theta for rendering)
+    const dipDepression = PARAMS.d * 1000 * Math.exp(-K_GAUSS * th_visual * th_visual);
+    const surfaceY = innerFloor + totalSag - localDrop - dipDepression;
+    const restY = surfaceY + ballRadius_mm;
+
+    // Ball drop animation
+    if (ballDropping) {
+      const frameDt = 1 / 60;
+      ballDropVel += 9810 * frameDt;
+      ballDropY -= ballDropVel * frameDt;
+      if (ballDropY <= restY) {
+        ballDropY = restY;
+        if (Math.abs(ballDropVel) < 5) {
+          ballDropping = false;
+          ballDropVel = 0;
+        } else {
+          ballDropVel = -ballDropVel * PARAMS.ball_restitution;
+        }
+      }
+      ballMesh.position.set(0, ballDropY, ballZ_local);
+    } else {
+      ballMesh.position.set(0, restY, ballZ_local);
+    }
+  }
+
+  // --- Theme -------------------------------------------------------------
+  function updateTheme() {
+    const isDark = document.documentElement.classList.contains('dark');
+    scene.background = new THREE.Color(isDark ? 0x1a1a1a : 0xeeeee6);
+    scene.fog = new THREE.Fog(isDark ? 0x1a1a1a : 0xeeeee6, 2000, 5000);
+    groundMat.color.set(isDark ? 0x2a3040 : 0xc8d0d8);
+  }
+
+  // --- Input -------------------------------------------------------------
+  let mouseActive = false;
+  canvas.addEventListener('mousemove', (e) => {
+    if (mode !== 'manual' && mode !== 'challenge') return;
+    mouseActive = true;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const norm = (mouseX - rect.width / 2) / (rect.width * 0.4);
+    // Inverted: mouse right = negative v_cmd (matches keyboard inversion)
+    v_cmd = Math.max(-PARAMS.max_cart_velocity, Math.min(PARAMS.max_cart_velocity, norm * PARAMS.max_cart_velocity));
+  });
+  canvas.addEventListener('mouseleave', () => { mouseActive = false; if (mode === 'manual' || mode === 'challenge') v_cmd = 0; });
+  canvas.addEventListener('touchmove', (e) => {
+    if (mode !== 'manual' && mode !== 'challenge') return;
+    mouseActive = true;
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const norm = (e.touches[0].clientX - rect.left - rect.width / 2) / (rect.width * 0.4);
+    v_cmd = Math.max(-PARAMS.max_cart_velocity, Math.min(PARAMS.max_cart_velocity, norm * PARAMS.max_cart_velocity));
+  }, { passive: false });
+  canvas.addEventListener('touchend', () => { mouseActive = false; if (mode === 'manual' || mode === 'challenge') v_cmd = 0; });
+
+  // Keyboard: ramp velocity like web simulation (3.0 m/s² acceleration)
+  const keys: Record<string, boolean> = {};
+  window.addEventListener('keydown', (e) => {
+    keys[e.key] = true;
+    if (e.key === ' ') { e.preventDefault(); resetState(); }
+  });
+  window.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+  // --- Mode buttons ------------------------------------------------------
+  const btnManual = document.getElementById('btn-manual')!;
+  const btnAi = document.getElementById('btn-ai')!;
+  const btnChallenge = document.getElementById('btn-challenge')!;
+  const aiDropdown = document.getElementById('ai-dropdown')!;
+
+  function setMode(newMode: typeof mode) {
+    mode = newMode;
+    resetState();
+    // Instantiate the correct controller
+    const classicalNames = ['pid', 'lqr', 'smc', 'mpc', 'nmpc'];
+    if (classicalNames.includes(activeController)) {
+      ctrlInstance = createController(activeController as ControllerName);
+      ctrlInstance.reset();
+    }
+    // Preload RL model if selected (lazy loads onnxruntime-web)
+    if (RL_MODELS.includes(activeController as RLModelName)) {
+      rlReady = false;
+      rlAction = 0;
+      loadOnnx().then(mod => {
+        mod.preloadModel(activeController as RLModelName).then(() => { rlReady = true; });
+      }).catch(() => {});
+    }
+    [btnManual, btnAi, btnChallenge].forEach(btn => {
+      btn.className = btn.className.replace(/bg-\[var\(--color-primary\)\] text-\[var\(--color-primary-fg\)\]/, 'glass text-[var(--color-text-primary)]');
+    });
+    const active = newMode === 'manual' ? btnManual : newMode === 'ai' ? btnAi : btnChallenge;
+    active.className = active.className.replace(/glass text-\[var\(--color-text-primary\)\]/, 'bg-[var(--color-primary)] text-[var(--color-primary-fg)]');
+    const labels: Record<string, string> = {
+      pid: 'PD', lqr: 'LQR', smc: 'SMC', mpc: 'MPC',
+      nmpc: 'NMPC', ppo: 'PPO', td3: 'TD3', sac: 'SAC', tqc: 'TQC', trpo: 'TRPO'
+    };
+    modeEl.textContent = newMode === 'manual' ? 'Manual'
+      : newMode === 'challenge' ? 'Challenge'
+      : (labels[activeController] || 'Controller');
+    if (newMode === 'challenge') { challengeActive = true; challengeTime = 0; challengeSettledTime = 0; }
+    aiDropdown.classList.add('hidden');
+  }
+
+  btnManual.addEventListener('click', () => setMode('manual'));
+  btnAi.addEventListener('click', (e) => {
+    e.stopPropagation();
+    aiDropdown.classList.toggle('hidden');
+  });
+  btnChallenge.addEventListener('click', () => setMode('challenge'));
+
+  // Controller dropdown selection
+  document.querySelectorAll('.ctrl-option').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      activeController = (e.currentTarget as HTMLElement).dataset.ctrl || 'ppo';
+      setMode('ai');
+    });
+  });
+
+  // Close dropdown on outside click
+  document.addEventListener('click', () => aiDropdown.classList.add('hidden'));
+
+  // Listen for controller selection from other components (e.g., Controllers section)
+  window.addEventListener('select-controller', ((e: CustomEvent) => {
+    const ctrl = e.detail?.controller;
+    if (ctrl) {
+      activeController = ctrl;
+      setMode('ai');
+    }
+  }) as EventListener);
+
+  // --- Animation loop ----------------------------------------------------
+  let lastTime = performance.now();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const now = performance.now();
+    const dt = (now - lastTime) / 1000;
+    lastTime = now;
+
+    // Keyboard velocity ramping (matches web simulation: 3.0 m/s² ramp rate)
+    if (mode === 'manual' || mode === 'challenge') {
+      if (keys['ArrowLeft']) {
+        v_cmd = Math.max(v_cmd - 3.0 * dt, -PARAMS.max_cart_velocity);
+      } else if (keys['ArrowRight']) {
+        v_cmd = Math.min(v_cmd + 3.0 * dt, PARAMS.max_cart_velocity);
+      }
+      // If no key and no mouse, decay to 0
+      if (!keys['ArrowLeft'] && !keys['ArrowRight'] && !mouseActive) {
+        v_cmd *= 0.9; // smooth decay
+        if (Math.abs(v_cmd) < 0.01) v_cmd = 0;
+      }
+    }
+
+    if (mode === 'ai') aiControl();
+
+    // Reduced-precision timers (e.g. Safari rounds performance.now() to 1ms)
+    // can yield dt === 0 on back-to-back frames; stepping physics with dt=0
+    // produces 0/0 = NaN in cartStep and the state never recovers.
+    if (dt > 0) {
+      const steps = 4;
+      for (let i = 0; i < steps; i++) physicsStep(dt / steps);
+    }
+    if (!Number.isFinite(state.th) || !Number.isFinite(state.x)) resetState();
+
+    updateVisuals();
+    updateTheme();
+    controls.update();
+    renderer.render(scene, camera);
+
+    // UI: show ball angle (the controlled state) + cart position with range context
+    const ballAngDeg = (state.th * 180 / Math.PI).toFixed(1);
+    const cartMm = (state.x * 1000).toFixed(0);
+    stateEl.textContent = `cart: ${cartMm}mm / ±777mm | ball: ${ballAngDeg}° / ±4.6° | v_cmd: ${v_cmd.toFixed(2)}`;
+    if (mode === 'challenge') {
+      timerEl.classList.remove('hidden');
+      if (challengeActive) {
+        timerEl.textContent = `⏱ ${challengeTime.toFixed(1)}s`;
+      } else {
+        timerEl.textContent = `Settled in ${challengeTime.toFixed(1)}s!${bestTime > 0 ? ` (best: ${bestTime.toFixed(1)}s)` : ''}`;
+      }
+    } else { timerEl.classList.add('hidden'); }
+  }
+
+  // Resize
+  const ro = new ResizeObserver(() => {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+  ro.observe(canvas);
+
+  resetState();
+  updateTheme();
+  animate();
+</script>

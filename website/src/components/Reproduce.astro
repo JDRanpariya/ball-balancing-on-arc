@@ -1,0 +1,80 @@
+---
+// Section 9: Reproduce it
+---
+
+<section id="reproduce" class="section section--alt" aria-labelledby="reproduce-title">
+  <div class="container container--narrow">
+    <span class="section-eyebrow reveal">Reproducibility</span>
+    <h2 id="reproduce-title" class="reveal section-title text-center mb-4">
+      Reproduce in Minutes
+    </h2>
+    <p class="reveal text-center text-[var(--color-text-secondary)] max-w-xl mx-auto mb-10">
+      Fully open-source. Train a PPO policy on CPU, evaluate all controllers in simulation.
+    </p>
+
+    <div class="reveal relative">
+      <div class="border border-[var(--color-border)] bg-[var(--color-surface)] p-6 rounded-lg overflow-x-auto">
+        <pre class="text-xs md:text-sm leading-relaxed"><code class="text-[var(--color-text-primary)]">
+git clone https://github.com/JDRanpariya/ball-balancing-on-arc.git
+cd ball-balancing-on-arc
+git lfs pull
+make install-full
+
+<span class="text-[var(--color-text-muted)]"># Train PPO with blind-zone + domain randomization (about 40 min on CPU)</span>
+python training/scripts/train_all_cont.py \
+  --algos ppo --rewards balanced --dr --blind-zone \
+  --timesteps 3000000 --tag ppo_bz_dr
+
+<span class="text-[var(--color-text-muted)]"># Evaluate all controllers in simulation</span>
+make eval-sim
+
+<span class="text-[var(--color-text-muted)]"># Generate all paper figures</span>
+make figures</code></pre>
+      </div>
+      <button
+        id="copy-code"
+        class="absolute top-3 right-3 px-3 py-1.5 text-xs font-medium border border-[var(--color-border)] bg-[var(--color-surface-alt)] rounded-md hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+      >
+        Copy
+      </button>
+    </div>
+
+    <!-- Links -->
+    <div class="reveal mt-10 flex items-center justify-center gap-3 flex-wrap">
+      <a
+        href="https://github.com/JDRanpariya/ball-balancing-on-arc"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="btn-brutal"
+      >
+        Repository
+      </a>
+      <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/paper/README.md" target="_blank" rel="noopener noreferrer" class="btn-brutal">
+        Paper PDF
+      </a>
+      <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/data/README.md" target="_blank" rel="noopener noreferrer" class="btn-brutal">
+        Dataset
+      </a>
+      <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/evaluation/README.md" target="_blank" rel="noopener noreferrer" class="btn-brutal">
+        Pretrained Models
+      </a>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  document.getElementById('copy-code')?.addEventListener('click', function () {
+    const code = `git clone https://github.com/JDRanpariya/ball-balancing-on-arc.git
+cd ball-balancing-on-arc
+git lfs pull
+make install-full
+python training/scripts/train_all_cont.py \\
+  --algos ppo --rewards balanced --dr --blind-zone \\
+  --timesteps 3000000 --tag ppo_bz_dr
+make eval-sim
+make figures`;
+    navigator.clipboard.writeText(code);
+    this.textContent = 'Copied!';
+    setTimeout(() => { this.textContent = 'Copy'; }, 2000);
+  });
+</script>

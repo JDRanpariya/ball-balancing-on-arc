@@ -1,0 +1,751 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css';
+
+const REPO = 'https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main';
+const src = (path: string) => `${REPO}/${path}`;
+
+const stlParts = [
+  { name: 'Arc (Cart Mount)', file: '/assets/cart_3d_print.stl', desc: '3D-printed arc with Gaussian dip profile at center. Mounts directly on linear cart.' },
+  { name: 'Arduino Mount', file: '/assets/arduino-mount.stl', desc: 'Bracket for the Arduino Uno sensor board.', zoom: 1.35 },
+];
+
+import katex from 'katex';
+const renderEq = (tex: string) => katex.renderToString(tex, { displayMode: true, throwOnError: false });
+
+const eq_main = renderEq(`\\ddot{\\theta} = \\frac{-R\\cos\\theta \\, \\ddot{x} - \\tfrac{1}{2}C_{\\text{eff}}'\\dot{\\theta}^2 - g(-R\\sin\\theta + \\alpha) - Q_{\\text{fric}}}{C_{\\text{eff}}(\\theta)}`);
+const eq_ceff = renderEq(`C_{\\text{eff}}(\\theta) = R^2 - 2R\\alpha\\sin\\theta + \\alpha^2 + \\frac{I_{\\text{ball}}}{m}\\left(\\frac{R}{r}\\right)^2`);
+const eq_alpha = renderEq(`\\alpha(\\theta) = 2dk\\theta \\, e^{-k\\theta^2}, \\quad k = \\frac{R^2}{2\\sigma^2}`);
+const eq_fric = renderEq(`Q_{\\text{fric}} = \\mu_{\\text{roll}} \\, gR\\cos\\theta \\, \\tanh\\!\\left(\\frac{\\dot{\\theta}}{\\epsilon}\\right) + \\mu_{\\text{visc}} \\dot{\\theta}`);
+const eq_motor = renderEq(`\\text{Motor: } \\dot{x} = v_{\\text{cmd}} + (\\dot{x} - v_{\\text{cmd}})\\,e^{-\\Delta t / \\tau_v}`);
+---
+
+<Layout title="Docs - Ball-on-Arc Benchmark">
+  <!-- Simple header for docs (not fixed nav) -->
+  <header class="border-b border-[var(--color-border)] px-4 py-4">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-y-2">
+      <a href={`${import.meta.env.BASE_URL}`} class="flex items-center gap-2 text-sm font-semibold text-[var(--color-text-primary)] hover:opacity-70 transition-opacity">
+        <span class="text-[var(--color-accent-text)]">&#9679;</span> Ball-on-Arc
+        <span class="text-[var(--color-text-muted)] font-normal">/ docs</span>
+      </a>
+      <nav class="flex items-center gap-5 text-xs text-[var(--color-text-secondary)]" aria-label="Docs navigation">
+        <a href={`${import.meta.env.BASE_URL}`} class="hover:text-[var(--color-text-primary)] transition-colors">Home</a>
+        <a href="/docs" class="text-[var(--color-text-primary)] font-semibold" aria-current="page">Docs</a>
+        <a href="https://github.com/JDRanpariya/ball-balancing-on-arc" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--color-text-primary)] transition-colors">Repository</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="max-w-6xl mx-auto px-4 flex">
+    <!-- Sidebar -->
+    <aside class="hidden lg:block w-40 shrink-0 sticky top-4 self-start pt-10 pr-6">
+      <nav class="docs-sidebar flex flex-col gap-1.5 text-xs text-[var(--color-text-secondary)]" aria-label="Documentation sections">
+        <a href="#overview" class="docs-link is-active">Overview</a>
+        <a href="#hardware" class="docs-link">Hardware</a>
+        <a href="#environment" class="docs-link">Environment</a>
+        <a href="#training" class="docs-link">Training</a>
+        <a href="#experiments" class="docs-link">Experiments</a>
+        <a href="#reproduce" class="docs-link">Reproduce</a>
+        <a href="#controllers" class="docs-link">Controllers</a>
+        <a href="#datasets" class="docs-link">Datasets</a>
+      </nav>
+    </aside>
+
+    <!-- Content -->
+    <main class="flex-1 min-w-0 py-10 lg:pl-8 max-w-3xl" id="main-content">
+
+      <!-- Overview -->
+      <section id="overview" class="docs-section pb-12 mb-12 border-b border-[var(--color-border)]">
+        <h1 class="text-2xl md:text-4xl font-bold tracking-tight leading-tight mb-4">
+          Documentation
+        </h1>
+        <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed max-w-xl mb-6">
+          Everything you need to reproduce the ball-on-arc benchmark: hardware specs, simulation environment, training pipeline, evaluation protocols, 3D-printable parts, and the open dataset.
+        </p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+          <div class="p-3 border border-[var(--color-border)] bg-[var(--color-surface-alt)]">
+            <div class="text-xl font-bold">13</div>
+            <div class="text-[10px] text-[var(--color-text-muted)]">Controllers</div>
+          </div>
+          <div class="p-3 border border-[var(--color-border)] bg-[var(--color-surface-alt)]">
+            <div class="text-xl font-bold">2</div>
+            <div class="text-[10px] text-[var(--color-text-muted)]">Experiments</div>
+          </div>
+          <div class="p-3 border border-[var(--color-border)] bg-[var(--color-surface-alt)]">
+            <div class="text-xl font-bold">1M</div>
+            <div class="text-[10px] text-[var(--color-text-muted)]">Calibrated Transitions</div>
+          </div>
+          <div class="p-3 border border-[var(--color-border)] bg-[var(--color-surface-alt)]">
+            <div class="text-xl font-bold">20Hz</div>
+            <div class="text-[10px] text-[var(--color-text-muted)]">Control Rate</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Hardware -->
+      <section id="hardware" class="docs-section pb-12 mb-12 border-b border-[var(--color-border)]">
+        <p class="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent-text)] mb-2">Hardware</p>
+        <h2 class="text-xl font-bold tracking-tight mb-6">Bill of Materials</h2>
+
+        <h3 class="text-xs font-bold uppercase tracking-wide mb-3">Control &amp; Drive (Beckhoff)</h3>
+        <div class="overflow-x-auto mb-6">
+          <table class="docs-table">
+            <thead><tr><th>Part</th><th>Description</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td>C6015-0010</td><td>Ultra-compact IPC (Atom E3845, 4-core)</td><td>TwinCAT 3 runtime</td></tr>
+              <tr><td>EK1100</td><td>EtherCAT Coupler</td><td>Terminal stack head</td></tr>
+              <tr><td>EL7201-0010</td><td>Servo Terminal (OCT, 48V, 2.8A rms)</td><td>Drives AM8121</td></tr>
+              <tr><td>EL9576</td><td>Brake Chopper Terminal</td><td>Regen energy dissipation</td></tr>
+              <tr><td>ZB8110</td><td>Braking Resistor (100W, 10&Omega;)</td><td>EL9576 accessory</td></tr>
+              <tr><td>EL6002</td><td>2-port RS-232 Serial Terminal</td><td>Host PC comms (ch 2)</td></tr>
+              <tr><td>EL1859</td><td>8 DI + 8 DO combo</td><td>Limit switches, status</td></tr>
+              <tr><td>AM8121-0FH0</td><td>Servo Motor (0.50 Nm, OCT)</td><td>Cart actuation</td></tr>
+              <tr><td>PS2001-2410</td><td>24V DC PSU (10A / 240W)</td><td>Powers terminal stack</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="text-xs font-bold uppercase tracking-wide mb-3">Actuator &amp; Sensors</h3>
+        <div class="overflow-x-auto mb-6">
+          <table class="docs-table">
+            <thead><tr><th>Part</th><th>Description</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>LEFB32NXS-1000</td><td>SMC Linear Actuator (1000mm stroke)</td><td>Belt-driven, cart rides on this</td></tr>
+              <tr><td>VL53L0X &times; 2</td><td>Time-of-Flight distance sensor</td><td>I&sup2;C, one per arc edge, 34.5ms timing budget</td></tr>
+              <tr><td>Adafruit #2167</td><td>IR Beam Break (508 thru-beam)</td><td>Ball-at-center detection</td></tr>
+              <tr><td>Arduino Uno</td><td>Sensor acquisition MCU</td><td>Reads ToF + IR, USB to host</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="text-xs font-bold uppercase tracking-wide mb-3">Cables &amp; 3D Parts</h3>
+        <div class="overflow-x-auto mb-6">
+          <table class="docs-table">
+            <thead><tr><th>Item</th><th>Qty</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>OCT motor cable (ZK4000-series)</td><td>1</td><td>Power + encoder, AM8121 &rarr; EL7201</td></tr>
+              <tr><td>EtherCAT patch (RJ-45, CAT5e+)</td><td>1</td><td>C6015 &rarr; EK1100</td></tr>
+              <tr><td>USB-to-RS232 adapter (FTDI/CH340)</td><td>1</td><td>Host &harr; EL6002 X2</td></tr>
+              <tr><td>USB-A to USB-B</td><td>1</td><td>Host &harr; Arduino</td></tr>
+              <tr><td>3D-printed arc (PLA, 0.2mm, 30%)</td><td>1</td><td>R=2.101m, Gaussian dip</td></tr>
+              <tr><td>3D-printed Arduino mount (PLA)</td><td>1</td><td>Holds the Arduino Uno on the rig frame</td></tr>
+              <tr><td>Acrylic sheets (320&times;90mm)</td><td>2</td><td>Side walls for ball containment</td></tr>
+              <tr><td><strong>Steel ball</strong> (24&thinsp;g, 9&thinsp;mm radius / 18&thinsp;mm &Oslash;)</td><td>1</td><td>Standard bearing ball; matches <code>BALL_MASS_KG=0.024</code>, <code>BALL_RADIUS_M=0.009</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="text-xs text-[var(--color-text-muted)]">
+          Physical constants in <a href={src('balancer/balancer/core/params.py')} target="_blank" rel="noopener noreferrer" class="text-[11px] px-1 py-0.5 bg-[var(--color-surface-alt)] border border-[var(--color-border)] hover:border-[var(--color-accent-text)] text-[var(--color-accent-text)] hover:underline rounded-sm">balancer/core/params.py</a> &middot; Serial config in <a href={src('balancer/balancer/hardware/serial_config.py')} target="_blank" rel="noopener noreferrer" class="text-[11px] px-1 py-0.5 bg-[var(--color-surface-alt)] border border-[var(--color-border)] hover:border-[var(--color-accent-text)] text-[var(--color-accent-text)] hover:underline rounded-sm">balancer/hardware/serial_config.py</a>
+          &middot; <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/hardware/BOM_AND_ASSEMBLY.md" target="_blank" rel="noopener noreferrer" class="text-[var(--color-accent-text)] hover:underline">Full BOM and Assembly &nearr;</a>
+        </p>
+
+        <h3 id="parts" class="text-xs font-bold uppercase tracking-wide mb-3 mt-8">3D-Printable Parts</h3>
+        <p class="text-xs text-[var(--color-text-muted)] mb-4">The arc and the Arduino mount are the custom 3D-printed components. Drag to orbit, scroll to zoom.</p>
+        <div class="grid sm:grid-cols-2 gap-4 max-w-3xl" id="stl-grid">
+          {stlParts.map((part) => (
+            <div class="border border-[var(--color-border)] bg-[var(--color-surface-alt)] overflow-hidden">
+              <canvas
+                class="stl-viewer w-full h-48 cursor-grab active:cursor-grabbing"
+                data-stl={part.file}
+                data-zoom={part.zoom || 1}
+                aria-label={part.name + ' - 3D interactive viewer'}
+              ></canvas>
+              <div class="p-4 border-t border-[var(--color-border)]">
+                <div class="text-sm font-semibold">{part.name}</div>
+                <p class="text-xs text-[var(--color-text-muted)] mt-1">{part.desc}</p>
+                <div class="flex items-center gap-4 mt-3">
+                  <a
+                    href={part.file}
+                    download
+                    class="text-[11px] font-semibold text-[var(--color-accent-text)] hover:underline"
+                  >
+                    &darr; Download STL
+                  </a>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- Simulation -->
+      <section id="environment" class="docs-section pb-12 mb-12 border-b border-[var(--color-border)]">
+        <p class="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent-text)] mb-2">Environment</p>
+        <h2 class="text-xl font-bold tracking-tight mb-4">Gymnasium Environment</h2>
+        <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed mb-4">
+          The simulation is a Gymnasium-compatible environment implementing the full nonlinear dynamics of the ball-on-arc system including Coulomb/viscous friction, motor first-order lag, and a Gaussian dip profile.
+        </p>
+
+        <h3 class="text-xs font-bold uppercase tracking-wide mb-3">Key Features</h3>
+        <ul class="space-y-2 text-sm text-[var(--color-text-secondary)] mb-6">
+          <li>&bull; <strong>RK4 integration</strong> with configurable substeps (default 10/step)</li>
+          <li>&bull; <strong>Domain randomization:</strong> randomizes friction, motor lag, arc radius, ball mass at episode reset</li>
+          <li>&bull; <strong>Blind-zone modeling:</strong> masks ball observation when outside sensor FoV (matches hardware &plusmn;90mm limit)</li>
+          <li>&bull; <strong>Observation noise:</strong> Gaussian noise on ball position (&sigma;&asymp;1.7mm training-time value; the deployed board measures &sigma;&asymp;3.3mm)</li>
+          <li>&bull; <strong>Action space:</strong> continuous velocity command &in; [-1, 1] (scaled to &plusmn;0.9 m/s)</li>
+          <li>&bull; <strong>Observation:</strong> [cart_pos, cart_vel, ball_angle, ball_angular_vel] (4D)</li>
+        </ul>
+
+        <h3 class="text-xs font-bold uppercase tracking-wide mb-3">Dynamics Model</h3>
+        <div class="math-block mb-4 overflow-x-auto">
+          <div class="mb-3" set:html={eq_main}></div>
+          <div class="space-y-2 mt-3">
+            <div set:html={eq_ceff}></div>
+            <div set:html={eq_alpha}></div>
+            <div set:html={eq_fric}></div>
+            <div set:html={eq_motor}></div>
+          </div>
+        </div>
+
+        <p class="text-xs text-[var(--color-text-muted)]">
+          Source: <a href={src('balancer/balancer/core/dynamics.py')} target="_blank" rel="noopener noreferrer" class="text-[11px] px-1 py-0.5 bg-[var(--color-surface-alt)] border border-[var(--color-border)] hover:border-[var(--color-accent-text)] text-[var(--color-accent-text)] hover:underline rounded-sm">balancer/core/dynamics.py</a> &middot; Env: <a href={src('balancer/balancer/envs/sim.py')} target="_blank" rel="noopener noreferrer" class="text-[11px] px-1 py-0.5 bg-[var(--color-surface-alt)] border border-[var(--color-border)] hover:border-[var(--color-accent-text)] text-[var(--color-accent-text)] hover:underline rounded-sm">balancer/envs/sim.py</a>
+        </p>
+      </section>
+
+      <!-- Training -->
+      <section id="training" class="docs-section pb-12 mb-12 border-b border-[var(--color-border)]">
+        <p class="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent-text)] mb-2">Training</p>
+        <h2 class="text-xl font-bold tracking-tight mb-4">RL Training Pipeline</h2>
+        <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed mb-4">
+          Built on Stable-Baselines3 + Hydra for config management + Weights and Biases for experiment tracking. All RL training runs on CPU (Appendix VI: CPU is faster than GPU for networks this small).
+        </p>
+
+        <h3 class="text-xs font-bold uppercase tracking-wide mb-3">Supported Algorithms</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
+          <div class="px-3 py-2 border border-[var(--color-border)] text-xs font-medium">PPO</div>
+          <div class="px-3 py-2 border border-[var(--color-border)] text-xs font-medium">SAC</div>
+          <div class="px-3 py-2 border border-[var(--color-border)] text-xs font-medium">TD3</div>
+          <div class="px-3 py-2 border border-[var(--color-border)] text-xs font-medium">TQC</div>
+          <div class="px-3 py-2 border border-[var(--color-border)] text-xs font-medium">TRPO</div>
+          <div class="px-3 py-2 border border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">+ IQL, MPPI, PPO-WM</div>
+        </div>
+
+        <h3 class="text-xs font-bold uppercase tracking-wide mb-3">Key Training Details</h3>
+        <ul class="space-y-2 text-sm text-[var(--color-text-secondary)] mb-6">
+          <li>&bull; <strong>Vectorized envs:</strong> 16 parallel environments (DummyVecEnv)</li>
+          <li>&bull; <strong>Timesteps:</strong> 3M total (PPO ~40 min on CPU; see Appendix V, Table 8 for full times)</li>
+          <li>&bull; <strong>Domain randomization</strong> (<code>--dr</code>): friction &plusmn;30%, motor lag &plusmn;50%, mass &plusmn;20% per episode via <code>env.fixed_param=False</code></li>
+          <li>&bull; <strong>Blind zone</strong> (<code>--blind-zone</code>): <code>env.sensor_blind_zone=True</code>; clamps ball observation near arc edges (matches VL53L0X min-range saturation, θ &asymp; 0.071&nbsp;rad)</li>
+          <li>&bull; <strong>Reward</strong> (<code>balanced</code>): dual-Gaussian position + velocity gate + cart-wall penalty + boundary penalty + effort/jerk penalties</li>
+          <li>&bull; <strong>Checkpointing:</strong> best model saved by eval callback every 50k steps</li>
+        </ul>
+
+        <pre class="code-block"><code># Train PPO with domain randomization + blind zone (the BZ+DR configuration)
+cd training
+python scripts/train_all_cont.py \
+  --algos ppo --rewards balanced --dr --blind-zone \
+  --timesteps 3000000 --tag ppo_balanced_dr_bz</code></pre>
+
+        <h3 class="text-xs font-bold uppercase tracking-wide mb-3 mt-6">Training Times (CPU, Appendix V, Table 8)</h3>
+        <div class="overflow-x-auto mb-4">
+          <table class="docs-table">
+            <thead><tr><th>Algorithm</th><th>Time (CPU)</th></tr></thead>
+            <tbody>
+              <tr><td>PPO</td><td>~40 min</td></tr>
+              <tr><td>TRPO</td><td>~58 min</td></tr>
+              <tr><td>SAC / TD3</td><td>~5.7 h</td></tr>
+              <tr><td>TQC</td><td>~8.5 h</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="text-xs text-[var(--color-text-muted)] mt-3">
+          Source: <a href={src('training/scripts/train.py')} target="_blank" rel="noopener noreferrer" class="text-[11px] px-1 py-0.5 bg-[var(--color-surface-alt)] border border-[var(--color-border)] hover:border-[var(--color-accent-text)] text-[var(--color-accent-text)] hover:underline rounded-sm">training/scripts/train.py</a> &middot; Configs: <a href={src('training/configs/train.yaml')} target="_blank" rel="noopener noreferrer" class="text-[11px] px-1 py-0.5 bg-[var(--color-surface-alt)] border border-[var(--color-border)] hover:border-[var(--color-accent-text)] text-[var(--color-accent-text)] hover:underline rounded-sm">training/configs/</a>
+          &middot; <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/training/README.md" target="_blank" rel="noopener noreferrer" class="text-[var(--color-accent-text)] hover:underline">Training README &nearr;</a>
+        </p>
+      </section>
+
+      <!-- Experiments -->
+      <section id="experiments" class="docs-section pb-12 mb-12 border-b border-[var(--color-border)]">
+        <p class="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent-text)] mb-2">Experiments</p>
+        <h2 class="text-xl font-bold tracking-tight mb-4">Experimental Protocols</h2>
+
+        <div class="space-y-6 mb-6">
+          <div class="border-l-4 border-[var(--color-accent)] pl-4">
+            <h3 class="text-sm font-bold">Experiment 1: Baseline Performance</h3>
+            <p class="text-xs text-[var(--color-text-secondary)] mt-1">
+              50 hardware trials per controller with difficulty-stratified initial <strong>cart</strong> positions
+              (cart in [±0.10, ±0.40, ±0.65, ±0.7765&nbsp;m]; ball angle arising from the cart jolt is <em>uncontrolled</em>, θ<sub>0</sub> &isin; [&minus;4.8°, 4.3°]).
+              Success = ball within <strong>&plusmn;0.01&nbsp;rad</strong> (&plusmn;21&nbsp;mm of arc displacement) held for 1.0&nbsp;s continuous, within a <strong>30&nbsp;s</strong> trial timeout.
+            </p>
+          </div>
+          <div class="border-l-4 border-[var(--color-accent)] pl-4">
+            <h3 class="text-sm font-bold">Frequency Robustness (Exp 3 in code)</h3>
+            <p class="text-xs text-[var(--color-text-secondary)] mt-1">
+              Control frequency swept 5 / 10 / 20 / 50 Hz. Tests graceful degradation under computational budget constraints. 50 simulation trials per frequency per controller.
+            </p>
+          </div>
+        </div>
+
+        <h3 class="text-xs font-bold uppercase tracking-wide mb-3">Metrics</h3>
+        <ul class="space-y-1 text-sm text-[var(--color-text-secondary)] mb-6">
+          <li>&bull; <strong>Success Rate (SR):</strong> % of trials achieving settling criterion</li>
+          <li>&bull; <strong>Settling Time:</strong> time from start to first continuous 1s in band</li>
+          <li>&bull; <strong>Median Settling:</strong> median settling time across successful trials</li>
+        </ul>
+
+        <pre class="code-block"><code># Sim evaluation (Exp 1 = baseline benchmark; Exp 3 = frequency robustness)
+python scripts/eval_sim.py --exp 1 --action-type cont
+
+# Hardware evaluation (Exp 1, stratified 50 trials)
+python scripts/eval.py --exp 1 --action-type cont --trials 50</code></pre>
+
+        <p class="text-xs text-[var(--color-text-muted)] mt-3">
+          Source: <code class="text-[11px] px-1 py-0.5 bg-[var(--color-surface-alt)] border border-[var(--color-border)]">evaluation/scripts/</code> &middot; CMA-ES tuner: <code class="text-[11px] px-1 py-0.5 bg-[var(--color-surface-alt)] border border-[var(--color-border)]">evaluation/tuning/</code>
+          &middot; <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/evaluation/README.md" target="_blank" rel="noopener noreferrer" class="text-[var(--color-accent-text)] hover:underline">Evaluation README &nearr;</a>
+        </p>
+      </section>
+
+
+
+      <!-- Reproduce -->
+      <section id="reproduce" class="docs-section pb-12 mb-12 border-b border-[var(--color-border)]">
+        <p class="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent-text)] mb-2">Reproduce</p>
+        <h2 class="text-xl font-bold tracking-tight mb-4">Reproduce the Results</h2>
+        <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed mb-6">
+          The guide breaks reproduction into 8 stages; the cards below summarize the key ones. Each card below gives the goal and the key command; click through for the full details.
+          The canonical end-to-end reference is the
+          <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/reproducibility_guide.md" target="_blank" rel="noopener noreferrer" class="text-[var(--color-accent-text)] hover:underline">Reproducibility Guide &nearr;</a>.
+        </p>
+
+        <div class="repro-steps">
+          <!-- Stage 1 -->
+          <div class="repro-card">
+            <div class="repro-card-head">
+              <span class="repro-step-num">1</span>
+              <span class="repro-step-label">Environment Setup</span>
+            </div>
+            <div class="repro-card-body">
+              <p class="repro-card-goal">Clone the repository and install all Python dependencies in a single conda environment.</p>
+              <pre class="code-block"><code>git clone https://github.com/JDRanpariya/ball-balancing-on-arc.git
+cd ball-balancing-on-arc
+git lfs pull
+conda env create -f env.yaml && conda activate balancer
+make install-full    # installs the balancer package (+ RL/MPC extras)
+make check           # verify 1,050 trials (21 configs x 50) present</code></pre>
+              <div class="repro-links">
+                <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/reproducibility_guide.md" target="_blank" rel="noopener noreferrer">Full instructions &nearr;</a>
+                <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/README.md" target="_blank" rel="noopener noreferrer">Repo README &nearr;</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 2 -->
+          <div class="repro-card">
+            <div class="repro-card-head">
+              <span class="repro-step-num">2</span>
+              <span class="repro-step-label">Hardware Assembly (optional)</span>
+            </div>
+            <div class="repro-card-body">
+              <p class="repro-card-goal">Build the physical ball-on-arc platform: SMC linear actuator, Beckhoff servo drive, VL53L0X sensors, Arduino acquisition MCU.</p>
+              <p class="repro-card-goal">Skip this stage if you only need simulation results and figures; everything except hardware evaluation runs without the platform.</p>
+              <div class="repro-links">
+                <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/hardware/BOM_AND_ASSEMBLY.md" target="_blank" rel="noopener noreferrer">BOM and Assembly &nearr;</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 3 -->
+          <div class="repro-card">
+            <div class="repro-card-head">
+              <span class="repro-step-num">3</span>
+              <span class="repro-step-label">Sensor Calibration</span>
+            </div>
+            <div class="repro-card-body">
+              <p class="repro-card-goal">Calibrate the two VL53L0X time-of-flight sensors for ball-on-arc position measurement (sequential mode, 34.5 ms budget, acquiring 20 Hz state).</p>
+              <div class="repro-links">
+                <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/reproducibility_guide.md" target="_blank" rel="noopener noreferrer">Calibration notes &nearr;</a>
+                <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/data/README.md" target="_blank" rel="noopener noreferrer">Calibration history (data/README.md) &nearr;</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 4 -->
+          <div class="repro-card">
+            <div class="repro-card-head">
+              <span class="repro-step-num">4</span>
+              <span class="repro-step-label">Data Collection (or use released data)</span>
+            </div>
+            <div class="repro-card-body">
+              <p class="repro-card-goal">Collect random-exploration data for dynamics modelling, or use the released 1M-transition dataset. For offline RL, build the post-recalibration demonstration dataset from hardware evaluation logs.</p>
+              <pre class="code-block"><code># Random exploration (requires hardware)
+cd data
+python collect_data.py --steps 3000000 --output dataset/my_data.h5 --hz 20
+
+# Build IQL dataset from evaluation logs
+python build_real_demonstrations.py</code></pre>
+              <div class="repro-links">
+                <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/reproducibility_guide.md" target="_blank" rel="noopener noreferrer">Full instructions &nearr;</a>
+                <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/data/README.md" target="_blank" rel="noopener noreferrer">Data README &nearr;</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 5 -->
+          <div class="repro-card">
+            <div class="repro-card-head">
+              <span class="repro-step-num">5</span>
+              <span class="repro-step-label">Train Controllers</span>
+            </div>
+            <div class="repro-card-body">
+              <p class="repro-card-goal">Train RL agents (PPO, world model, IQL) and tune classical controller parameters via CMA-ES.</p>
+              <pre class="code-block"><code># PPO (BZ+DR, ~40 min on CPU)
+make train-ppo
+
+# World model (LSTM dynamics, stateless training)
+make train-worldmodel
+
+# IQL (offline RL from hardware data, same environment)
+make train-iql
+
+# Tune classical controllers
+cd evaluation
+python -m tuning.tune_controllers --controller all</code></pre>
+              <div class="repro-links">
+                <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/reproducibility_guide.md" target="_blank" rel="noopener noreferrer">Full instructions &nearr;</a>
+                <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/training/README.md" target="_blank" rel="noopener noreferrer">Training README &nearr;</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 6 -->
+          <div class="repro-card">
+            <div class="repro-card-head">
+              <span class="repro-step-num">6</span>
+              <span class="repro-step-label">Evaluate in Simulation</span>
+            </div>
+            <div class="repro-card-body">
+              <p class="repro-card-goal">Run all 13 controllers through the 50-trial stratified protocol in simulation (~90 min, no hardware). Should reproduce the supplement's RL training-cost table (Sim SR near 100% for RL agents).</p>
+              <pre class="code-block"><code>make eval-sim</code></pre>
+              <div class="repro-links">
+                <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/reproducibility_guide.md" target="_blank" rel="noopener noreferrer">Full instructions &nearr;</a>
+                <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/evaluation/README.md" target="_blank" rel="noopener noreferrer">Evaluation README &nearr;</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 7 -->
+          <div class="repro-card">
+            <div class="repro-card-head">
+              <span class="repro-step-num">7</span>
+              <span class="repro-step-label">Run on Hardware + Generate Figures</span>
+            </div>
+            <div class="repro-card-body">
+              <p class="repro-card-goal">Run the 50-trial stratified protocol on the physical platform. Then regenerate all paper figures and compile the PDFs.</p>
+              <pre class="code-block"><code># Hardware evaluation (requires platform)
+make eval-hw
+
+# Regenerate all paper figures (~30 s, no GPU)
+make figures
+
+# Compile main paper
+cd paper/ram
+pdflatex main && bibtex main && pdflatex main && pdflatex main
+
+# Compile supplementary
+cd paper/ram/supplementary
+pdflatex supplementary && bibtex supplementary && pdflatex supplementary && pdflatex supplementary</code></pre>
+              <div class="repro-links">
+                <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/reproducibility_guide.md" target="_blank" rel="noopener noreferrer">Full instructions &nearr;</a>
+                <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/reproducibility_guide.md" target="_blank" rel="noopener noreferrer">Figure generation &nearr;</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-xs text-[var(--color-text-muted)] mt-4">
+          Full end-to-end one-shot reproduction:
+          <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/reproducibility_guide.md" target="_blank" rel="noopener noreferrer" class="text-[var(--color-accent-text)] hover:underline">Reproducibility Guide &sect;11 &nearr;</a>
+        </p>
+      </section>
+
+      <!-- Controllers -->
+      <section id="controllers" class="docs-section pb-12 mb-12 border-b border-[var(--color-border)]">
+        <p class="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent-text)] mb-2">Controllers</p>
+        <h2 class="text-xl font-bold tracking-tight mb-4">Available Controllers</h2>
+
+        <pre class="code-block mb-6"><code>class BaseController(ABC):
+    def step(self, state, cart_limit) -> float: ...
+    def reset(self) -> None: ...</code></pre>
+
+        <div class="space-y-2">
+          <div class="ctrl-row"><span class="ctrl-tag ctrl-classical">Classical</span><span class="ctrl-name">PD</span><span class="ctrl-desc">Proportional-Derivative with wall override</span></div>
+          <div class="ctrl-row"><span class="ctrl-tag ctrl-classical">Classical</span><span class="ctrl-name">LQR</span><span class="ctrl-desc">Linear state feedback; the deployed gain is PD-equivalent with a wall override (see supplement)</span></div>
+          <div class="ctrl-row"><span class="ctrl-tag ctrl-classical">Classical</span><span class="ctrl-name">MPC</span><span class="ctrl-desc">Linear Model Predictive Control; deployed as MPC+WO (QP cart constraint brittle near the rail, so disabled in favor of the wall override)</span></div>
+          <div class="ctrl-row"><span class="ctrl-tag ctrl-classical">Classical</span><span class="ctrl-name">NMPC</span><span class="ctrl-desc">Nonlinear MPC (CasADi/IPOPT, N=10)</span></div>
+          <div class="ctrl-row"><span class="ctrl-tag ctrl-classical">Classical</span><span class="ctrl-name">SMC</span><span class="ctrl-desc">Sliding Mode Control (equivalent-control + boundary-layer sat)</span></div>
+          <div class="ctrl-row"><span class="ctrl-tag ctrl-rl">RL</span><span class="ctrl-name">PPO</span><span class="ctrl-desc">Proximal Policy Optimization + DR + blind zone</span></div>
+          <div class="ctrl-row"><span class="ctrl-tag ctrl-rl">RL</span><span class="ctrl-name">TD3</span><span class="ctrl-desc">Twin Delayed DDPG + domain randomization</span></div>
+          <div class="ctrl-row"><span class="ctrl-tag ctrl-rl">RL</span><span class="ctrl-name">SAC</span><span class="ctrl-desc">Soft Actor-Critic (entropy-regularized)</span></div>
+          <div class="ctrl-row"><span class="ctrl-tag ctrl-rl">RL</span><span class="ctrl-name">TQC</span><span class="ctrl-desc">Truncated Quantile Critics + domain randomization</span></div>
+          <div class="ctrl-row"><span class="ctrl-tag ctrl-rl">RL</span><span class="ctrl-name">TRPO</span><span class="ctrl-desc">Trust Region Policy Optimization + DR</span></div>
+          <div class="ctrl-row"><span class="ctrl-tag ctrl-rl">RL</span><span class="ctrl-name">IQL</span><span class="ctrl-desc">Implicit Q-Learning (offline, from logged hardware data)</span></div>
+          <div class="ctrl-row"><span class="ctrl-tag ctrl-rl">RL</span><span class="ctrl-name">MPPI</span><span class="ctrl-desc">Model Predictive Path Integral via learned LSTM world model</span></div>
+          <div class="ctrl-row"><span class="ctrl-tag ctrl-rl">RL</span><span class="ctrl-name">PPO-WM</span><span class="ctrl-desc">PPO trained inside a learned world model (separate collection from MPPI's)</span></div>
+        </div>
+
+        <p class="text-xs text-[var(--color-text-muted)] mt-4">
+          All controllers share the <code class="text-[11px] px-1 py-0.5 bg-[var(--color-surface-alt)] border border-[var(--color-border)]">BaseController</code> interface.
+          <br/><br/>
+          State vector: <code class="text-[11px] px-1 py-0.5 bg-[var(--color-surface-alt)] border border-[var(--color-border)]">[cart_pos, cart_vel, ball_angle, ball_ang_vel]</code>.
+          Output: normalized velocity &in; [-1, 1].
+          <br/><br/>
+          <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/balancer/README.md" target="_blank" rel="noopener noreferrer" class="text-[var(--color-accent-text)] hover:underline">Controllers source code &nearr;</a>
+        </p>
+      </section>
+
+      <!-- Dataset -->
+      <section id="datasets" class="docs-section pb-12 min-h-[50vh]">
+        <p class="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent-text)] mb-2">Datasets</p>
+        <h2 class="text-xl font-bold tracking-tight mb-4">Open Datasets</h2>
+        <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed mb-6">
+          Two complementary datasets from the physical system, both stored as HDF5.
+        </p>
+
+        <!-- Real Demonstrations -->
+        <h3 class="text-xs font-bold uppercase tracking-wide mb-3">1. Real Hardware Demonstrations</h3>
+        <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed mb-3">
+          Episodic trajectories from all controller families operating on real hardware. Structured for imitation learning, offline RL, and benchmarking.
+        </p>
+
+        <div class="overflow-x-auto mb-4">
+          <table class="docs-table">
+            <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Total episodes</td><td>3,862</td></tr>
+              <tr><td>Successful / Failed</td><td>2,620 (67.8%) / 1,242 (32.2%)</td></tr>
+              <tr><td>Total transitions</td><td>~1.23 M</td></tr>
+              <tr><td>Controller families</td><td>RL, IQL (offline RL), NMPC, MPC, PD, LQR, SMC, MPPI</td></tr>
+              <tr><td>File size</td><td>~82 MB</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <pre class="code-block mb-4"><code>data/dataset/arcball_real_demonstrations/arcball_real_demonstrations.h5
+  /episodes/N/observations   float32 [T, 4]  # state per timestep
+  /episodes/N/actions        float32 [T]     # velocity command
+  /episodes/N/timestamps     float32 [T]     # seconds from start
+  /flat/observations            float32 [T_total, 4]  # concatenated
+  /flat/next_observations       float32 [T_total, 4]
+  /flat/actions                 float32 [T_total]
+  /flat/terminals               bool    [T_total]
+  /episode_metadata/            # controller_name, success, settling_time, ...</code></pre>
+
+        <!-- Random Exploration -->
+        <h3 class="text-xs font-bold uppercase tracking-wide mb-3 mt-6">2. Random Exploration</h3>
+        <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed mb-3">
+          Continuous stream of transitions under a random walk policy, used to train the LSTM world models for MPPI and PPO-WM (same architecture, two separate 1M-transition collections). Best for dynamics modelling and system identification.
+        </p>
+
+        <div class="overflow-x-auto mb-4">
+          <table class="docs-table">
+            <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Total transitions</td><td>1,000,000</td></tr>
+              <tr><td>Policy</td><td>Random walk (uniform &plusmn;0.9 m/s, p_stick = 0.5)</td></tr>
+              <tr><td>Structure</td><td>Continuous stream, no episode boundaries</td></tr>
+              <tr><td>Sampling</td><td>20 Hz</td></tr>
+              <tr><td>File size</td><td>~30 MB</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <pre class="code-block mb-4"><code>arcball_cont_1M_calib196_148.h5
+  /dataset  (1,000,000, 15) float32  : raw transitions
+    cols: [prev_state(4), prev_raw_tof(2), action(1),
+           cur_state(4), cur_raw_tof(2), reward(1), dip_reward(1)]
+
+# Also released (earlier pre-calibration run, 11-col):
+#   arcball_cont_1M_pre_neg.h5  # 999,999 rows; same data but omits the 4 raw ToF
+#                                  # columns (2 sensors x 2 timesteps: prev+cur),
+#                                  # keeping only the calibrated state vector
+
+# Also released (later calibration era, same collection campaign):
+#   arcball_cont_1M_calib196_160.h5  # last 1M rows of the same campaign;
+#                                     # the dataset the released world-model
+#                                     # checkpoint was trained on</code></pre>
+
+        <div class="text-xs text-[var(--color-text-muted)] mt-6 pt-4 border-t border-[var(--color-border)] flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span>Source: <code class="text-[11px] px-1 py-0.5 bg-[var(--color-surface-alt)] border border-[var(--color-border)]">data/</code></span>
+          <span>License: open (finalized for release)</span>
+          <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/data/dataset/arcball_real_demonstrations/README.md" target="_blank" rel="noopener noreferrer" class="text-[var(--color-accent-text)] hover:underline">Dataset docs &nearr;</a>
+          <a href="https://github.com/JDRanpariya/ball-balancing-on-arc/blob/main/data/README.md" target="_blank" rel="noopener noreferrer" class="text-[var(--color-accent-text)] hover:underline">Data README &nearr;</a>
+        </div>
+      </section>
+
+    </main>
+  </div>
+  <Footer />
+</Layout>
+
+<style>
+  @reference '../styles/global.css';
+
+  .docs-link {
+    @apply pl-3 py-1 border-l-2 border-transparent transition-colors hover:text-[var(--color-text-primary)];
+  }
+  .docs-link.is-active {
+    @apply text-[var(--color-text-primary)] font-semibold border-[var(--color-accent-text)];
+  }
+  .code-block {
+    @apply px-4 py-3 text-xs leading-relaxed overflow-x-auto bg-[var(--color-surface-alt)] border border-[var(--color-border)];
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .repro-steps {
+    @apply space-y-4;
+  }
+  .repro-card {
+    @apply border border-[var(--color-border)] bg-[var(--color-surface-alt)] overflow-hidden;
+  }
+  .repro-card-head {
+    @apply flex items-center gap-3 px-4 py-3 bg-[var(--color-border)]/20 border-b border-[var(--color-border)];
+  }
+  .repro-step-num {
+    @apply text-[10px] font-bold text-[var(--color-accent-text)] shrink-0 w-6;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .repro-step-label {
+    @apply text-xs font-semibold;
+  }
+  .repro-card-body {
+    @apply px-4 py-3 space-y-3;
+  }
+  .repro-card-goal {
+    @apply text-xs text-[var(--color-text-secondary)] leading-relaxed;
+  }
+  .repro-links {
+    @apply flex flex-wrap gap-x-4 gap-y-1 pt-2 text-[11px] border-t border-[var(--color-border)];
+  }
+  .repro-links a {
+    @apply text-[var(--color-accent-text)] hover:underline;
+  .ctrl-row {
+    @apply flex items-center gap-3 py-2 border-b border-[var(--color-border)] text-xs;
+  }
+  .ctrl-tag {
+    @apply text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 shrink-0 w-16 text-center;
+  }
+  .ctrl-classical {
+    @apply bg-[var(--color-success)]/20 text-[#5a8035];
+  }
+  .ctrl-rl {
+    @apply bg-[var(--color-accent)]/30 text-[var(--color-accent-text)];
+  }
+  .ctrl-name {
+    @apply font-bold w-12 shrink-0;
+  }
+  .ctrl-desc {
+    @apply text-[var(--color-text-muted)];
+  }
+  .docs-table {
+    @apply w-full text-xs border-collapse border border-[var(--color-border)];
+  }
+  .docs-table th {
+    @apply text-left px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-surface-alt)] border border-[var(--color-border)];
+  }
+  .docs-table td {
+    @apply px-3 py-2 border border-[var(--color-border)];
+    font-size: 11px;
+  }
+  .docs-table tr:hover td {
+    @apply bg-[var(--color-surface-alt)];
+  }
+</style>
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+
+
+
+<script is:inline>
+  // Sidebar active tracking: scroll-position based
+  document.addEventListener('DOMContentLoaded', () => {
+    const links = document.querySelectorAll('.docs-sidebar .docs-link');
+    const sections = Array.from(document.querySelectorAll('.docs-section'));
+    function updateActive() {
+      let current = sections[0];
+      const offset = 100;
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top <= offset) {
+          current = section;
+        } else {
+          break;
+        }
+      }
+      links.forEach(l => l.classList.remove('is-active'));
+      const id = current.id;
+      const link = document.querySelector('.docs-sidebar a[href="#' + id + '"]');
+      if (link) link.classList.add('is-active');
+    }
+    window.addEventListener('scroll', updateActive, { passive: true });
+    updateActive();
+  });
+</script>
+
+<!-- Three.js STL viewer (importmap is in Layout.astro head) -->
+<script is:inline define:vars={{ baseUrl: import.meta.env.BASE_URL }}>
+  window.__BASE_URL__ = baseUrl;
+</script>
+<script type="module" is:inline>
+  import * as THREE from 'three';
+  import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+  const canvases = document.querySelectorAll('.stl-viewer');
+  if (canvases.length) {
+    const isDark = document.documentElement.classList.contains('dark');
+    const bgColor = isDark ? 0x232323 : 0xeeece4;
+
+    canvases.forEach(canvas => {
+      const stlFile = canvas.dataset.stl;
+      const w = canvas.clientWidth || 300;
+      const h = canvas.clientHeight || 144;
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(bgColor);
+
+      const camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 2000);
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+      const dir = new THREE.DirectionalLight(0xffffff, 1.0);
+      dir.position.set(50, 80, 50);
+      scene.add(dir);
+
+      const controls = new OrbitControls(camera, canvas);
+      controls.enableDamping = true;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 1.2;
+
+      const base = window.__BASE_URL__ || '/';
+      // Join with exactly one slash: stlFile is an absolute "/assets/..." path,
+      // so a naive base + stlFile ("/" + "/assets/...") yields "//assets/..." —
+      // a protocol-relative URL the browser resolves to https://assets/... (CORS fail).
+      const stlUrl = base.replace(/\/+$/, '') + '/' + stlFile.replace(/^\/+/, '');
+      new STLLoader().load(stlUrl, (geo) => {
+        const mat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.2, roughness: 0.7 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.rotation.x = -Math.PI / 2;
+        geo.computeBoundingBox();
+        const center = geo.boundingBox.getCenter(new THREE.Vector3());
+        const size = geo.boundingBox.getSize(new THREE.Vector3());
+        mesh.position.set(-center.x, -center.z, -center.y);
+        const maxDim = Math.max(size.x, size.y, size.z) * parseFloat(canvas.dataset.zoom || '1');
+        camera.position.set(maxDim * 0.575, maxDim * 0.425, maxDim * 1.0);
+        camera.lookAt(0, 0, 0);
+        controls.target.set(0, 0, 0);
+        controls.update();
+        scene.add(mesh);
+      });
+
+      (function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      })();
+    });
+  }
+</script>

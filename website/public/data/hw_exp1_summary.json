@@ -1,0 +1,106 @@
+[
+ {
+  "key": "MPPI_v12",
+  "label": "MPPI",
+  "paradigm": "real-data",
+  "sr": 100,
+  "mean": 2.06,
+  "median": 1.67
+ },
+ {
+  "key": "PPO_BZ_DR",
+  "label": "PPO (BZ+DR)",
+  "paradigm": "sim-rl",
+  "sr": 96,
+  "mean": 3.81,
+  "median": 3.15
+ },
+ {
+  "key": "PID_WO",
+  "label": "PD+WO",
+  "paradigm": "classical",
+  "sr": 96,
+  "mean": 5.8,
+  "median": 3.38
+ },
+ {
+  "key": "PPO_WM_v1",
+  "label": "PPO (WM)",
+  "paradigm": "real-data",
+  "sr": 100,
+  "mean": 6.84,
+  "median": 3.64
+ },
+ {
+  "key": "LQR_WO",
+  "label": "LQR+WO",
+  "paradigm": "classical",
+  "sr": 92,
+  "mean": 10.21,
+  "median": 8.28
+ },
+ {
+  "key": "NMPC_N10",
+  "label": "NMPC",
+  "paradigm": "predictive",
+  "sr": 90,
+  "mean": 7.48,
+  "median": 4.71
+ },
+ {
+  "key": "TRPO_DR",
+  "label": "TRPO (DR)",
+  "paradigm": "sim-rl",
+  "sr": 90,
+  "mean": 8.09,
+  "median": 4.8
+ },
+ {
+  "key": "TQC_DR",
+  "label": "TQC (DR)",
+  "paradigm": "sim-rl",
+  "sr": 86,
+  "mean": 9.77,
+  "median": 6.61
+ },
+ {
+  "key": "SMC_WO",
+  "label": "SMC+WO",
+  "paradigm": "classical",
+  "sr": 92,
+  "mean": 8.93,
+  "median": 8.28
+ },
+ {
+  "key": "SAC_DR",
+  "label": "SAC (DR)",
+  "paradigm": "sim-rl",
+  "sr": 82,
+  "mean": 10.1,
+  "median": 8.4
+ },
+ {
+  "key": "MPC_WO",
+  "label": "MPC+WO",
+  "paradigm": "predictive",
+  "sr": 80,
+  "mean": 10.81,
+  "median": 9.65
+ },
+ {
+  "key": "IQL_OffRL",
+  "label": "IQL",
+  "paradigm": "real-data",
+  "sr": 92,
+  "mean": 10.62,
+  "median": 9.8
+ },
+ {
+  "key": "TD3_DR",
+  "label": "TD3 (DR)",
+  "paradigm": "sim-rl",
+  "sr": 92,
+  "mean": 11.45,
+  "median": 10.06
+ }
+]

@@ -1,0 +1,35 @@
+---
+// Section 7: Key findings
+// Mirrors main paper sections/05_results.tex: Findings 1-3 + A Note on Offline RL.
+// Once the boundary is handled the four paradigms are statistically
+// indistinguishable on reliability at n=50; MPPI's edge is confined to settling
+// speed. MPPI and PPO-WM use two separate world models (same architecture, two
+// datasets). The blind-zone reading of the residual gap is a hypothesis.
+const findings = [
+  { label: 'Finding 1', title: 'Constraint Handling and the Choice of Paradigm', text: 'Add a simple wall-override and almost any controller becomes reliable: PD jumps to 96%, LQR to 92%, SMC to 92% (NMPC handles the boundary on its own, 90%). Once the rail is handled, all four control families tie statistically on reliability. Boundary handling matters more than the classical-versus-learned choice.' },
+  { label: 'Finding 2', title: 'Two Deployments from a Learned Model', text: 'One small LSTM, trained on logged hardware data, gives two ways to run the system. MPPI plans with it live: 100% success, fastest settling (1.67 s), lowest effort. PPO-WM instead trains a policy inside a second such model, also 100%, deciding in about 7 ms per step. Both run on CPU, no GPU anywhere.' },
+  { label: 'Finding 3', title: 'The Reach of Domain Randomization', text: 'Domain randomization does most of the sim-to-real work, taking PPO from 60% to 90%, then stops helping. Modelling the sensor blind zone nudges it to 98%, but that gap is too small to call at 50 trials. Agents that balance perfectly in simulation still range 82-96% on hardware, so sim scores do not predict real reliability.' },
+  { label: 'Offline RL', title: 'A Low-Overhead Option Without a Simulator', text: 'IQL reaches 92% success with almost the lowest control effort, using no simulator at all. It trades speed for simplicity (median 9.8 s). Its training data came free from ordinary evaluation runs, an easy option when you cannot trust a simulator.' },
+];
+---
+
+<section id="findings" class="section section--alt" aria-labelledby="findings-title">
+  <div class="container">
+    <span class="section-eyebrow reveal">Findings</span>
+    <h2 id="findings-title" class="reveal section-title text-center mb-12 pb-4">
+      Key Takeaways
+    </h2>
+
+    <div class="grid sm:grid-cols-2 gap-4">
+      {findings.map((f, i) => (
+        <div
+          class="reveal border border-[var(--color-border)] bg-[var(--color-surface)] p-5 rounded-lg hover:border-[var(--color-text-muted)] transition-all"
+          style={`transition-delay: ${i * 80}ms`}
+        >
+          <div class="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent-text)] mb-2">{f.title}</div>
+          <p class="text-sm text-[var(--color-text-primary)] leading-relaxed">{f.text}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

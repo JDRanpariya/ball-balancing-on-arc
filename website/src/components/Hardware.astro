@@ -1,0 +1,75 @@
+---
+// Section 3: Hardware platform
+const specs = [
+  { label: 'Actuation', value: 'Beckhoff AM8121 + TwinCAT 3', detail: 'Velocity mode · τ_v = 0.15s · 7-phase profile' },
+  { label: 'Sensing', value: '2× VL53L0X ToF + Encoder', detail: 'Ball: ~10-12 Hz, σ ≈ 3.3mm · Cart: PLC encoder' },
+  { label: 'Track & Arc', value: '1.553m track (axis units) · R = 2.101m', detail: '~1m physical travel, encoder-scaled 2x · PLA arc, 2mm dip (FWHM 20mm)' },
+  { label: 'Control', value: '20 Hz · Python · USB-serial', detail: 'i7-13700 workstation' },
+];
+---
+
+<section id="hardware" class="section section--alt" aria-labelledby="hardware-title">
+  <div class="container">
+    <span class="section-eyebrow reveal">Platform</span>
+    <h2 id="hardware-title" class="reveal section-title text-center mb-4">
+      Industrial-Grade Hardware
+    </h2>
+    <p class="reveal text-center text-[var(--color-text-secondary)] max-w-2xl mx-auto mb-16">
+      Industrial servo, low-cost sensors, and rapid-prototyped mechanics : the noise and imprecision controllers actually face in deployment.
+    </p>
+
+    <div class="reveal grid md:grid-cols-2 gap-10 items-center">
+      <!-- Left: Photo -->
+      <div>
+        <div class="border border-[var(--color-border)] rounded-lg overflow-hidden">
+          <img
+            src={`${import.meta.env.BASE_URL}figures/experimental_setup.jpeg`}
+            alt="Ball-and-arc experimental setup showing the linear cart, 3D-printed arc with ToF sensors, and Beckhoff servo motor"
+            class="w-full h-auto block"
+            loading="lazy"
+            decoding="async"
+            width="1200"
+            height="800"
+          />
+        </div>
+        <p class="text-xs text-[var(--color-text-muted)] mt-3 italic text-center">
+          <strong>Fig.</strong> The ball-on-arc platform.
+        </p>
+        <div class="border-l-4 border-[var(--color-accent-text)] bg-transparent pl-4 py-3 mt-4">
+          <p class="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+            <strong class="text-[var(--color-text-primary)]">Why this setup matters:</strong>
+            Asynchronous multi-rate sensing, communication latency, and sensor noise create conditions where simulation-optimal controllers can catastrophically fail.
+          </p>
+        </div>
+      </div>
+
+      <!-- Right: Specs + data flow -->
+      <div class="space-y-3">
+        {specs.map((s) => (
+          <div class="border border-[var(--color-border)] bg-[var(--color-surface)] p-4 rounded-lg">
+            <div class="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">{s.label}</div>
+            <div class="text-sm text-[var(--color-text-primary)] mt-1 font-semibold">{s.value}</div>
+            <div class="text-xs text-[var(--color-text-secondary)] mt-0.5">{s.detail}</div>
+          </div>
+        ))}
+
+        <!-- Data flow -->
+        <div class="border border-[var(--color-border)] bg-[var(--color-surface)] p-4 rounded-lg">
+          <div class="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Data Flow</div>
+          <div class="text-xs text-[var(--color-text-primary)] mt-2 font-mono leading-relaxed">
+            ToF (ball) -> Arduino Uno -> USB -> Workstation
+            <br/>
+            PLC encoder (cart) -> RS232-USB -> Workstation
+            <br/>
+            -> merge as [x, ẋ, θ, θ̇] -> Controller -> USB -> PLC -> Servo
+          </div>
+          <div class="text-xs text-[var(--color-text-muted)] mt-1">Asynchronous: ball at ~10-12 Hz, cart at loop rate ; fused into state vector at 20 Hz</div>
+        </div>
+
+
+      </div>
+    </div>
+
+
+  </div>
+</section>

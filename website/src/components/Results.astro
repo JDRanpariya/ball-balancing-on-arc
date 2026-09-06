@@ -1,0 +1,394 @@
+---
+// Results: Neo-brutalist interactive charts
+// Data from paper Tables I-IV (updated)
+
+// Exp 1: canonical per-controller hardware summary (generated from
+// paper/data/exp1_hardware/consolidated.json by paper/ram/regenerate_figures.py)
+import exp1Summary from '../../public/data/hw_exp1_summary.json';
+
+const PARADIGM = {
+  'real-data':  { name: 'Real-Data',  slot: 1, shape: 'diamond'  },
+  'classical':  { name: 'Classical',  slot: 2, shape: 'circle'   },
+  'sim-rl':     { name: 'Sim RL',     slot: 3, shape: 'square'   },
+  'predictive': { name: 'Predictive', slot: 4, shape: 'triangle' },
+};
+
+// Chart geometry (SVG user units)
+const CW = 720, CH = 440, ML = 58, MR = 14, MT = 16, MB = 46;
+const PW = CW - ML - MR, PH = CH - MT - MB;
+const XMAX = 12, YMIN = -1.5, YMAX = 27;      // x: median settle (s), y: failure %
+const px = (v) => ML + (v / XMAX) * PW;
+const py = (v) => MT + ((YMAX - v) / (YMAX - YMIN)) * PH;
+
+const pts = exp1Summary.map((r) => ({
+  ...r, x: r.median, y: 100 - r.sr,
+  cx: px(r.median), cy: py(100 - r.sr),
+}));
+
+// SMC+WO and LQR+WO genuinely coincide (both 92% SR, 8.28 s median), which
+// hides one marker under the other. Nudge exactly-coincident points apart
+// horizontally (~6 px) so both stay visible and hoverable; the tooltip
+// values stay exact.
+{
+  const byPos = new Map();
+  for (const pt of pts) {
+    const key = `${pt.cx.toFixed(1)},${pt.cy.toFixed(1)}`;
+    if (!byPos.has(key)) byPos.set(key, []);
+    byPos.get(key).push(pt);
+  }
+  for (const group of byPos.values()) {
+    if (group.length > 1) {
+      group.forEach((pt, i) => { pt.cx += (i - (group.length - 1) / 2) * 12; });
+    }
+  }
+}
+
+// Label placement: fixed offsets for tight clusters, greedy elsewhere
+const LBL_OVERRIDES = {
+  'NMPC': [-0.3, 0.9], 'TRPO (DR)': [0.25, 0.9], 'SMC+WO': [-0.3, -1.3],
+  'TD3 (DR)': [0.25, -1.4], 'LQR+WO': [0.45, -1.7], 'PPO (WM)': [0.3, 1.1],
+  'IQL': [0.25, 0.9],
+};
+const LBL_OFFSETS = [[0.25, 0.9], [0.25, -1.0], [-0.3, 0.9], [0.25, 1.9], [-0.3, -1.0]];
+{
+  const placedPts = [];
+  for (const pt of [...pts].sort((a, b) => (a.x - b.x) || (a.y - b.y))) {
+    let dx, dy;
+    if (LBL_OVERRIDES[pt.label]) {
+      [dx, dy] = LBL_OVERRIDES[pt.label];
+    } else {
+      for ([dx, dy] of LBL_OFFSETS) {
+        const lx = pt.x + dx, ly = Math.min(Math.max(pt.y + dy, YMIN + 0.9), YMAX - 0.9);
+        if (placedPts.every(([px2, py2]) => Math.abs(lx - px2) > 1.8 || Math.abs(ly - py2) > 1.1)) break;
+      }
+    }
+    const lx = pt.x + dx, ly = Math.min(Math.max(pt.y + dy, YMIN + 0.9), YMAX - 0.9);
+    placedPts.push([lx, ly]);
+    pt.lx = px(lx); pt.ly = py(ly); pt.anchor = dx > 0 ? 'start' : 'end';
+  }
+}
+
+const xTicks = [0, 2, 4, 6, 8, 10, 12];
+const yTicks = [0, 5, 10, 15, 20, 25];
+
+function markPath(shape, cx, cy, r) {
+  if (shape === 'diamond') return `M ${cx} ${cy - r * 1.2} L ${cx + r} ${cy} L ${cx} ${cy + r * 1.2} L ${cx - r} ${cy} Z`;
+  if (shape === 'square') return `M ${cx - r * 0.9} ${cy - r * 0.9} H ${cx + r * 0.9} V ${cy + r * 0.9} H ${cx - r * 0.9} Z`;
+  if (shape === 'triangle') return `M ${cx} ${cy - r * 1.15} L ${cx + r * 1.05} ${cy + r * 0.85} L ${cx - r * 1.05} ${cy + r * 0.85} Z`;
+  return '';
+}
+
+// Exp 2 Hardware: Frequency robustness (from paper Table IV, 30 trials/freq)
+const exp2hw = [
+  { ctrl: 'PPO (BZ+DR)', hz5: 67, hz10: 97, hz20: 97, hz50: 90, type: 'rl' },
+  { ctrl: 'TQC (DR)',    hz5: 53, hz10: 83, hz20: 97, hz50: 70, type: 'rl' },
+  { ctrl: 'PID+WO', hz5: 67, hz10: 83, hz20: 90, hz50: 83, type: 'classical' },
+  { ctrl: 'NMPC (N=10)', hz5: 43, hz10: 80, hz20: 97, hz50: 23, type: 'classical' },
+  { ctrl: 'MPC+WO', hz5: 37, hz10: 70, hz20: 43, hz50: 0, type: 'classical' },
+];
+
+const freqs = [5, 10, 20, 50];
+
+// Per-stratum settling data (imported at build time)
+import rawStratumData from '../../public/data/hw_settling_by_stratum.json';
+const rawStratum = rawStratumData;
+let stratumEntries = [];
+if (rawStratum) {
+  // Only the 13 paper controllers (matches the exp1 table above). Screening variants
+  // (SMC_basic, PID_vanilla, LQR_basic, PPO_DR, PPO_base, MPC_basic_constr, etc.) are excluded.
+  const allowed = {
+    'MPPI_v12':   'MPPI',
+    'PPO_BZ_DR':  'PPO (BZ+DR)',
+    'PID_WO':     'PD+WO',
+    'PPO_WM_v1':  'PPO (WM)',
+    'LQR_WO':     'LQR+WO',
+    'NMPC_N10':   'NMPC',
+    'TRPO_DR':    'TRPO (DR)',
+    'TQC_DR':     'TQC (DR)',
+    'SMC_WO':     'SMC+WO',
+    'SAC_DR':     'SAC (DR)',
+    'MPC_WO':     'MPC+WO',
+    'IQL_OffRL':  'IQL',
+    'TD3_DR':     'TD3 (DR)',
+  };
+  for (const [key, val] of Object.entries(rawStratum)) {
+    if (!(key in allowed)) continue;          // skip non-paper screening variants
+    const displayName = allowed[key];
+    const cat = (key.startsWith('PPO_') && key !== 'PPO_WM_v1') || key.startsWith('SAC_') || key.startsWith('TD3_')
+      || key.startsWith('TQC_') || key.startsWith('TRPO_') ? 'rl'
+      : (key.startsWith('MPPI') || key.startsWith('PPO_WM') || key.startsWith('IQL')) ? 'mppi'
+      : 'classical';
+    const medians = {};
+    for (const stratum of ['easy', 'medium', 'hard']) {
+      const arr = val[stratum] || [];
+      if (arr.length === 0) { medians[stratum] = null; continue; }
+      const sorted = [...arr].sort((a, b) => a - b);
+      const n = sorted.length;
+      medians[stratum] = n % 2 === 0 ? (sorted[n/2 - 1] + sorted[n/2]) / 2 : sorted[Math.floor(n/2)];
+    }
+    stratumEntries.push({ key, displayName, cat, medians, n_success: val.n_success, n_total: val.n_total });
+  }
+  // Sort by overall median (infer from easy/medium/hard), matching exp1 order
+  const overallOrder = exp1Summary.map(e => e.label);
+  stratumEntries.sort((a, b) => {
+    const ia = overallOrder.indexOf(a.displayName);
+    const ib = overallOrder.indexOf(b.displayName);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return a.displayName.localeCompare(b.displayName);
+  });
+}
+// Maximum median across all strata for bar scaling
+let maxStratumMedian = 0;
+for (const e of stratumEntries) {
+  for (const s of ['easy', 'medium', 'hard']) {
+    if (e.medians[s] !== null && e.medians[s] > maxStratumMedian) maxStratumMedian = e.medians[s];
+  }
+}
+---
+
+<section id="results" class="section" aria-labelledby="results-title">
+  <div class="container">
+    <span class="section-eyebrow reveal">Results</span>
+    <h2 id="results-title" class="reveal section-title text-center mb-4">
+      Experimental Results
+    </h2>
+    <p class="reveal text-center text-[var(--color-text-secondary)] max-w-2xl mx-auto mb-16">
+      50 hardware trials per controller at 20 Hz. Difficulty-stratified initial conditions. Identical physical system.
+    </p>
+
+    <!-- Exp 1: Settling time FIRST, then Success Rate -->
+    <div class="reveal mb-20">
+      <div class="border-2 border-[var(--color-text-primary)] bg-[var(--color-surface)] shadow-[4px_4px_0px_var(--color-text-primary)] p-6 md:p-8">
+        <div class="flex items-baseline justify-between mb-6 flex-wrap gap-2">
+          <div>
+            <h3 class="text-lg font-bold">Baseline Performance: 50 Trials per Controller</h3>
+            <p class="text-xs text-[var(--color-text-muted)] mt-1">50 trials, 20 Hz, stratified ICs | Ball settled within &plusmn;0.01 rad (&plusmn;21 mm of arc) for 1 s, 30 s timeout</p>
+          </div>
+        </div>
+
+        <!-- Legend (identity also encoded by marker shape) -->
+        <div class="flex items-center gap-4 text-xs flex-wrap mb-3" aria-hidden="true">
+          {Object.values(PARADIGM).map((par) => (
+            <span class="flex items-center gap-1.5">
+              <svg width="14" height="14" viewBox="-8 -8 16 16">
+                {par.shape === 'circle'
+                  ? <circle r="6" style={`fill: var(--pv${par.slot})`} />
+                  : <path d={markPath(par.shape, 0, 0, 6)} style={`fill: var(--pv${par.slot})`} />}
+              </svg>
+              {par.name}
+            </span>
+          ))}
+        </div>
+
+        <div class="relative">
+          <svg id="exp1-scatter" viewBox={`0 0 ${CW} ${CH}`} class="w-full h-auto" role="img"
+               aria-label="Scatter chart: hardware failure rate versus median settling time for all 13 controllers. Both axes increase toward worse outcomes. MPPI is best on both axes: zero failures and 1.67 second median settling.">
+            {yTicks.map((t) => (
+              <g>
+                <line x1={ML} x2={CW - MR} y1={py(t)} y2={py(t)} stroke="var(--color-border)" stroke-width="1" />
+                <text x={ML - 8} y={py(t) + 3.5} text-anchor="end" font-size="11" fill="var(--color-text-muted)">{t}</text>
+              </g>
+            ))}
+            {xTicks.map((t) => (
+              <g>
+                <line x1={px(t)} x2={px(t)} y1={MT} y2={CH - MB} stroke="var(--color-border)" stroke-width="1" />
+                <text x={px(t)} y={CH - MB + 16} text-anchor="middle" font-size="11" fill="var(--color-text-muted)">{t}</text>
+              </g>
+            ))}
+            <line x1={ML} x2={CW - MR} y1={CH - MB} y2={CH - MB} stroke="var(--color-text-secondary)" stroke-width="1.5" />
+            <line x1={ML} x2={ML} y1={MT} y2={CH - MB} stroke="var(--color-text-secondary)" stroke-width="1.5" />
+            <text x={ML + PW / 2} y={CH - 8} text-anchor="middle" font-size="12" fill="var(--color-text-secondary)">Median Settling Time (s, successful trials)</text>
+            <text x={16} y={MT + PH / 2} text-anchor="middle" font-size="12" fill="var(--color-text-secondary)" transform={`rotate(-90 16 ${MT + PH / 2})`}>Failure Rate (%)</text>
+
+            {pts.map((pt) => (
+              <g>
+                <line x1={pt.cx} x2={pt.lx} y1={pt.cy} y2={pt.ly} stroke="var(--color-text-muted)" stroke-width="0.75" opacity="0.55" />
+                <text x={pt.lx + (pt.anchor === 'start' ? 2 : -2)} y={pt.ly + 3.5} text-anchor={pt.anchor} font-size="11" fill="var(--color-text-secondary)">{pt.label}</text>
+              </g>
+            ))}
+            {pts.map((pt) => (
+              <g class="exp1-pt cursor-default" data-label={pt.label} data-par={PARADIGM[pt.paradigm].name}
+                 data-sr={pt.sr} data-median={pt.median} data-mean={pt.mean}>
+                <circle cx={pt.cx} cy={pt.cy} r="14" fill="transparent" />
+                {PARADIGM[pt.paradigm].shape === 'circle'
+                  ? <circle class="exp1-mark" cx={pt.cx} cy={pt.cy} r="7" style={`fill: var(--pv${PARADIGM[pt.paradigm].slot})`} stroke="var(--color-surface)" stroke-width="1.5" />
+                  : <path class="exp1-mark" d={markPath(PARADIGM[pt.paradigm].shape, pt.cx, pt.cy, 7)} style={`fill: var(--pv${PARADIGM[pt.paradigm].slot})`} stroke="var(--color-surface)" stroke-width="1.5" />}
+              </g>
+            ))}
+          </svg>
+          <div id="exp1-tip" class="pointer-events-none absolute z-10 hidden border-2 border-[var(--color-text-primary)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs shadow-[3px_3px_0px_var(--color-text-primary)]"></div>
+        </div>
+
+        <p class="text-[10px] text-[var(--color-text-muted)] mt-2">
+          Both axes increase toward worse outcomes, so the ideal corner is bottom-left. MPPI is the best point estimate on both axes (0% failures, 1.67 s median settling). Two controllers reach 100% success, and no pairwise success-rate difference within the reliable group is statistically significant at 50 trials; MPPI's advantage is confined to settling speed (significantly faster than nine of the twelve others). SMC+WO and LQR+WO coincide exactly (92%, 8.28 s median) and are nudged apart slightly so both stay visible. Hover a point for details.
+        </p>
+
+        <details class="mt-3">
+          <summary class="text-xs font-semibold cursor-pointer">Data table</summary>
+          <div class="overflow-x-auto mt-2">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="border-b-2 border-[var(--color-text-primary)] text-left">
+                  <th class="py-1 pr-3">Controller</th><th class="py-1 pr-3">Family</th>
+                  <th class="py-1 pr-3 text-right">SR (%)</th>
+                  <th class="py-1 pr-3 text-right">Median settle (s)</th>
+                  <th class="py-1 text-right">Mean settle (s)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pts.map((pt) => (
+                  <tr class="border-b border-[var(--color-border)]">
+                    <td class="py-1 pr-3 font-medium">{pt.label}</td>
+                    <td class="py-1 pr-3">{PARADIGM[pt.paradigm].name}</td>
+                    <td class="py-1 pr-3 text-right tabular-nums">{pt.sr}</td>
+                    <td class="py-1 pr-3 text-right tabular-nums">{pt.median.toFixed(2)}</td>
+                    <td class="py-1 text-right tabular-nums">{pt.mean.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <p class="text-[10px] text-[var(--color-text-secondary)] mt-4 border-t border-[var(--color-border)] pt-3">
+          BZ = Blind Zone sensor modelling, DR = Domain Randomization, WO = Wall Override, WM = World Model (LSTM-based next-state prediction). Data-driven methods (MPPI, PPO WM, IQL) use learned dynamics or logged data (no simulation SR reported).
+        </p>
+      </div>
+    </div>
+
+    <!-- Exp 1b: Per-stratum settling-time breakdown -->
+    <div class="reveal mb-20">
+      <div class="border-2 border-[var(--color-text-primary)] bg-[var(--color-surface)] shadow-[4px_4px_0px_var(--color-text-primary)] p-6 md:p-8">
+        <div class="flex items-baseline justify-between mb-6 flex-wrap gap-2">
+          <div>
+            <h3 class="text-lg font-bold">Settling Time by Starting-Position Stratum</h3>
+            <p class="text-xs text-[var(--color-text-muted)] mt-1">Median time to settle, by cart initial position (50 stratified trials, successful trials only). Bar color encodes the stratum (see legend below); controller category is shown in the first chart.</p>
+          </div>
+        </div>
+
+        <!-- Stratum legend: distinct hues to avoid collision with the per-controller category colors above -->
+        <div class="flex items-center gap-5 text-[10px] text-[var(--color-text-muted)] mb-4 pb-3 border-b border-[var(--color-border)]">
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-slate-400"></span> easy (center)</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-indigo-400"></span> medium (mid-rail)</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-rose-400"></span> hard (near-wall)</span>
+        </div>
+
+        <div class="space-y-1" id="stratum-chart">
+          {stratumEntries.map((e) => {
+            const hasEasy = e.medians.easy !== null;
+            const hasMed  = e.medians.medium !== null;
+            const hasHard = e.medians.hard !== null;
+            const stratBarPct = (v) => v !== null ? Math.round((v / maxStratumMedian) * 100) : 0;
+            const easyPct   = stratBarPct(e.medians.easy);
+            const mediumPct = stratBarPct(e.medians.medium);
+            const hardPct   = stratBarPct(e.medians.hard);
+            const nSuccess  = e.n_success || 0;
+            const total     = e.n_total || 50;
+            const tooltipEasy   = e.medians.easy   !== null ? `center: ${e.medians.easy.toFixed(1)}s` : '';
+            const tooltipMedium = e.medians.medium !== null ? `mid-rail: ${e.medians.medium.toFixed(1)}s` : '';
+            const tooltipHard   = e.medians.hard   !== null ? `near-wall: ${e.medians.hard.toFixed(1)}s` : '';
+            const tooltipStr = [tooltipEasy, tooltipMedium, tooltipHard].filter(Boolean).join(' | ');
+            // Show success rate: X/Y
+            const srStr = `${nSuccess}/${total}`;
+            return (
+            <div class="group grid items-center gap-1 grid-cols-[72px_1fr_1fr_1fr_28px] md:grid-cols-[100px_1fr_1fr_1fr_36px] hover:bg-[var(--color-surface-hover)] px-2 py-1 -mx-2 transition-colors cursor-default" title={tooltipStr ? `${tooltipStr} (${srStr} success)` : `${srStr} success`}>
+              <div class="text-[10px] font-medium truncate text-[var(--color-text-muted)] pr-1" title={e.displayName}>{e.displayName}</div>
+
+              <!-- Easy stratum bar -->
+              <div class="h-4 bg-[var(--color-border)] border border-[var(--color-text-primary)]/20 relative overflow-hidden">
+                <div class="h-full transition-all duration-300 bg-slate-400"
+                  style={`width: ${easyPct}%`}>
+                </div>
+                <div class="absolute inset-0 flex items-center pl-1">
+                  <span class={`text-[9px] font-semibold ${easyPct > 35 ? "text-[#1a1a1a]" : "text-[var(--color-text-muted)]"}`}
+                    style={easyPct <= 35 && hasEasy ? `margin-left: ${easyPct + 1}%` : ''}>
+                    {hasEasy ? `${e.medians.easy.toFixed(1)}s` : ''}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Medium stratum bar -->
+              <div class="h-4 bg-[var(--color-border)] border border-[var(--color-text-primary)]/20 relative overflow-hidden">
+                <div class="h-full transition-all duration-300 bg-indigo-400"
+                  style={`width: ${mediumPct}%`}>
+                </div>
+                <div class="absolute inset-0 flex items-center pl-1">
+                  <span class={`text-[9px] font-semibold ${mediumPct > 35 ? "text-[#1a1a1a]" : "text-[var(--color-text-muted)]"}`}
+                    style={mediumPct <= 35 && hasMed ? `margin-left: ${mediumPct + 1}%` : ''}>
+                    {hasMed ? `${e.medians.medium.toFixed(1)}s` : ''}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Hard stratum bar -->
+              <div class="h-4 bg-[var(--color-border)] border border-[var(--color-text-primary)]/20 relative overflow-hidden">
+                <div class="h-full transition-all duration-300 bg-rose-400"
+                  style={`width: ${hardPct}%`}>
+                </div>
+                <div class="absolute inset-0 flex items-center pl-1">
+                  <span class={`text-[9px] font-semibold ${hardPct > 35 ? "text-[#1a1a1a]" : "text-[var(--color-text-muted)]"}`}
+                    style={hardPct <= 35 && hasHard ? `margin-left: ${hardPct + 1}%` : ''}>
+                    {hasHard ? `${e.medians.hard.toFixed(1)}s` : ''}
+                  </span>
+                </div>
+              </div>
+
+              <!-- SR tiny badge -->
+              <div class="text-[9px] text-center tabular-nums text-[var(--color-text-muted)]" title={`${srStr} success`}>
+                {srStr}
+              </div>
+            </div>
+            );
+          })}
+        </div>
+
+        <p class="text-[10px] text-[var(--color-text-secondary)] mt-4 border-t border-[var(--color-border)] pt-3">
+          Hardware median settling time by starting-position stratum. MPPI is fastest and most consistent across all strata (medians 1.3 to 2.2 s). Three equal-width bars per controller: center (left), mid-rail (middle), near-wall (right); the two 5-trial at-wall strata are omitted here (the supplement reports all five). Empty bar = zero successful trials in that stratum. SR = successful trials / total.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style is:global>
+  :root {
+    --pv1: #2a78d6; /* Real-Data (blue)   */
+    --pv2: #1baf7a; /* Classical (aqua)   */
+    --pv3: #eda100; /* Sim RL (yellow)    */
+    --pv4: #008300; /* Predictive (green) */
+  }
+  .dark {
+    --pv1: #3987e5;
+    --pv2: #199e70;
+    --pv3: #c98500;
+    --pv4: #008300;
+  }
+  .exp1-pt .exp1-mark { transition: transform 120ms ease; transform-box: fill-box; transform-origin: center; }
+  .exp1-pt:hover .exp1-mark { transform: scale(1.35); }
+</style>
+
+<script>
+  const tip = document.getElementById('exp1-tip');
+  const svg = document.getElementById('exp1-scatter');
+  if (tip && svg) {
+    const wrap = tip.parentElement;
+    for (const g of svg.querySelectorAll('.exp1-pt')) {
+      g.addEventListener('pointerenter', () => {
+        const d = g.dataset;
+        tip.innerHTML = `<span class="font-bold">${d.label}</span>` +
+          `<span class="text-[var(--color-text-muted)]"> (${d.par})</span><br/>` +
+          `SR ${d.sr}% &middot; median ${d.median}s &middot; mean ${d.mean}s`;
+        tip.classList.remove('hidden');
+      });
+      g.addEventListener('pointermove', (e) => {
+        const r = wrap.getBoundingClientRect();
+        const x = Math.min(e.clientX - r.left + 12, r.width - tip.offsetWidth - 4);
+        tip.style.left = `${Math.max(x, 0)}px`;
+        tip.style.top = `${e.clientY - r.top - tip.offsetHeight - 10}px`;
+      });
+      g.addEventListener('pointerleave', () => tip.classList.add('hidden'));
+    }
+  }
+</script>

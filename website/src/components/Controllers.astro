@@ -1,0 +1,126 @@
+---
+// Section 4: Controller zoo
+const playable = ['pid', 'lqr', 'smc', 'mpc', 'nmpc', 'ppo', 'td3', 'sac', 'tqc', 'trpo'];
+
+const classical = [
+  { name: 'PD', desc: 'Proportional-Derivative + wall override' },
+  { name: 'LQR', desc: 'Linear Quadratic Regulator' },
+  { name: 'SMC', desc: 'Sliding Mode Control' },
+  { name: 'MPC', desc: 'Linear Model Predictive Control' },
+  { name: 'NMPC', desc: 'Nonlinear MPC (CasADi/IPOPT)' },
+];
+
+const learning = [
+  { name: 'PPO', desc: 'Proximal Policy Optimization' },
+  { name: 'TD3', desc: 'Twin Delayed DDPG' },
+  { name: 'SAC', desc: 'Soft Actor-Critic' },
+  { name: 'TQC', desc: 'Truncated Quantile Critics' },
+  { name: 'TRPO', desc: 'Trust Region Policy Opt.' },
+];
+---
+
+<section id="controllers" class="section" aria-labelledby="controllers-title">
+  <div class="container">
+    <span class="section-eyebrow reveal">Controllers</span>
+    <h2 id="controllers-title" class="reveal section-title text-center mb-4">
+      13 Controllers Compared
+    </h2>
+    <p class="reveal text-center text-[var(--color-text-secondary)] max-w-2xl mx-auto mb-12">
+      5 classical + 5 learning-based + 3 data-driven controllers evaluated under identical conditions on real hardware : 50 stratified trials each.
+    </p>
+
+    <!-- Classical (left) + Learning-based (right) -->
+    <div class="reveal mb-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+      <!-- Classical -->
+      <div>
+        <h3 class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-widest mb-4">
+          Classical Control (5)
+        </h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {classical.map((c) => (
+            <button
+              class="controller-card relative border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-center rounded-lg hover:border-[var(--color-success)] hover:bg-[var(--color-surface-alt)] transition-all cursor-pointer"
+              data-controller={c.name.toLowerCase()}
+            >
+              {playable.includes(c.name.toLowerCase()) && <span class="absolute top-1.5 right-1.5 text-[9px] text-[var(--color-success)] font-bold">></span>}
+              <div class="text-lg font-bold text-[var(--color-text-primary)]">{c.name}</div>
+              <div class="text-[10px] text-[var(--color-text-muted)] mt-1 leading-tight">{c.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <!-- Learning-based -->
+      <div>
+        <h3 class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-widest mb-4">
+          Learning-Based (5)
+        </h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {learning.map((c) => (
+            <button
+              class="controller-card relative border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-center rounded-lg hover:border-[var(--color-accent)] hover:bg-[var(--color-surface-alt)] transition-all cursor-pointer"
+              data-controller={c.name.toLowerCase()}
+            >
+              {playable.includes(c.name.toLowerCase()) && <span class="absolute top-1.5 right-1.5 text-[9px] text-[var(--color-accent-text)] font-bold">></span>}
+              <div class="text-lg font-bold text-[var(--color-text-primary)]">{c.name}</div>
+              <div class="text-[10px] text-[var(--color-text-muted)] mt-1 leading-tight">{c.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <!-- Data-Driven (bottom, full width) -->
+    <div class="reveal">
+      <h3 class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-widest mb-4">
+        Data-Driven (3)
+      </h3>
+      <div class="flex flex-wrap justify-center gap-3">
+        <div
+          class="relative border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-center rounded-lg opacity-70 cursor-default w-48"
+          title="MPPI runs 800 LSTM rollouts per step (~40ms); not feasible in browser"
+        >
+          <span class="absolute top-1.5 right-1.5 text-[9px] text-[var(--color-text-muted)] font-bold">~40ms</span>
+          <div class="text-lg font-bold text-[var(--color-text-primary)]">MPPI (WM)</div>
+          <div class="text-[10px] text-[var(--color-text-muted)] mt-1 leading-tight">LSTM World Model + MPPI</div>
+        </div>
+        <div
+          class="relative border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-center rounded-lg opacity-70 cursor-default w-48"
+          title="PPO policy trained with LSTM world model"
+        >
+          <span class="absolute top-1.5 right-1.5 text-[9px] text-[var(--color-text-muted)] font-bold">6.7ms</span>
+          <div class="text-lg font-bold text-[var(--color-text-primary)]">PPO (WM)</div>
+          <div class="text-[10px] text-[var(--color-text-muted)] mt-1 leading-tight">PPO trained on LSTM World Model</div>
+        </div>
+        <div
+          class="relative border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-center rounded-lg opacity-70 cursor-default w-48"
+          title="Implicit Q-Learning (offline RL from demonstrations)"
+        >
+          <span class="absolute top-1.5 right-1.5 text-[9px] text-[var(--color-text-muted)] font-bold">2.0ms</span>
+          <div class="text-lg font-bold text-[var(--color-text-primary)]">IQL (OffRL)</div>
+          <div class="text-[10px] text-[var(--color-text-muted)] mt-1 leading-tight">Offline RL from demonstrations</div>
+        </div>
+      </div>
+      <p class="text-[10px] text-[var(--color-text-muted)] mt-2 text-center">WM = LSTM-based next-state prediction world model. OffRL = Offline Reinforcement Learning.</p>
+    </div>
+
+    <!-- Click hint -->
+    <p class="reveal text-center text-xs text-[var(--color-text-muted)] mt-8">
+      Click any controller to watch it balance in the simulation above ↑
+    </p>
+  </div>
+</section>
+
+<script>
+  // Wire controller cards to the Hero simulation
+  document.querySelectorAll('.controller-card').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = (btn as HTMLElement).dataset.controller;
+      if (!name) return;
+      // Dispatch custom event that Hero listens for
+      window.dispatchEvent(new CustomEvent('select-controller', { detail: { controller: name } }));
+      // Scroll to sim
+      document.getElementById('hero')?.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+</script>

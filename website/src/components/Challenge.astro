@@ -1,0 +1,84 @@
+---
+// Section 2: The Problem explained
+---
+
+<section id="challenge" class="section" aria-labelledby="challenge-title">
+  <div class="container">
+    <span class="section-eyebrow reveal">The Problem</span>
+    <h2 id="challenge-title" class="reveal section-title text-center mb-4">
+      A Deceptively Simple Challenge
+    </h2>
+    <p class="reveal text-center text-[var(--color-text-secondary)] max-w-2xl mx-auto mb-12">
+      A nonlinear, underactuated control problem with real-world sensing constraints.
+    </p>
+
+    <!-- Diagram + explanation -->
+    <div class="reveal grid md:grid-cols-2 gap-12 items-center">
+      <!-- Left: system diagram -->
+      <div class="flex justify-center">
+        <div class="relative w-full max-w-md rounded-lg border border-[var(--color-border)] overflow-hidden">
+          <img
+            src={`${import.meta.env.BASE_URL}figures/ball_on_arc_cart.png`}
+            alt="Ball-on-arc system diagram showing a ball rolling on a convex arc (with shallow concave dip) mounted on a linear cart with ToF sensors"
+            class="w-full h-auto block"
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+      </div>
+
+      <!-- Right: the reality gap narrative -->
+      <div class="space-y-4">
+
+        <div class="flex gap-3 items-start">
+          <span class="text-[var(--color-danger)] text-lg font-bold">1</span>
+          <p class="text-[var(--color-text-primary)]">
+            <strong>Sensor blind zone:</strong> ToF sensors cannot see the ball near the arc edges (|θ| &gt; ~0.071 rad), creating unobservable states at the worst possible moment
+          </p>
+        </div>
+        <div class="flex gap-3 items-start">
+          <span class="text-[var(--color-danger)] text-lg font-bold">2</span>
+          <p class="text-[var(--color-text-primary)]">
+            <strong>Sensor noise:</strong> about 13 mm peak-to-peak variation with the ball stationary at center (σ ≈ 3.3 mm on the fused estimate, no filtering applied, ~10-12 Hz update)
+          </p>
+        </div>
+        <div class="flex gap-3 items-start">
+          <span class="text-[var(--color-danger)] text-lg font-bold">3</span>
+          <p class="text-[var(--color-text-primary)]">
+            <strong>Sensor zero-offset:</strong> replacing or repositioning ToF sensors introduces a variable offset (±several mm) from true center, silently biasing every controller differently each time
+          </p>
+        </div>
+        <div class="flex gap-3 items-start">
+          <span class="text-[var(--color-danger)] text-lg font-bold">4</span>
+          <p class="text-[var(--color-text-primary)]">
+            <strong>Sim-to-real gap:</strong> first-order lag model approximates the PLC's 7-phase motion profile; mismatch in cart acceleration transients couples directly into ball dynamics
+          </p>
+        </div>
+
+        <div class="flex gap-3 items-start">
+          <span class="text-[var(--color-danger)] text-lg font-bold">5</span>
+          <p class="text-[var(--color-text-primary)]">
+            <strong>Hard track limits:</strong> 1.56m track with no room for error; classical controllers need heuristic wall-override gains that introduce oscillations near endpoints
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Stats cards -->
+    <div class="reveal mt-16 grid grid-cols-1 md:grid-cols-3 max-w-2xl mx-auto gap-4">
+      <div class="glass rounded-xl p-5 text-center">
+        <div class="text-3xl font-bold text-[var(--color-primary)]">13</div>
+        <div class="text-sm text-[var(--color-text-secondary)] mt-1">Controllers</div>
+      </div>
+      <div class="glass rounded-xl p-5 text-center">
+        <div class="text-3xl font-bold text-[var(--color-primary)]">50</div>
+        <div class="text-sm text-[var(--color-text-secondary)] mt-1">Trials Each</div>
+      </div>
+      <div class="glass rounded-xl p-5 text-center">
+        <div class="text-3xl font-bold text-[var(--color-primary)]">20 Hz</div>
+        <div class="text-sm text-[var(--color-text-secondary)] mt-1">Control Rate</div>
+      </div>
+    </div>
+  </div>
+</section>

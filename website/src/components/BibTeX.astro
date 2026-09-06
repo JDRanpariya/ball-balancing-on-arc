@@ -1,0 +1,45 @@
+---
+// Section 10: Citation
+const bibtex = `@misc{ranpariya2026ballonarc,
+  author = {Jaydeepkumar Ranpariya and Sandipan Nath and
+            Alexander Mattick and Georgios Kontes and
+            Tobias Feigl and Christopher Mutschler},
+  title  = {A Ball-on-Arc Benchmark: Classical and
+            Learning-Based Control on Realistic
+            Deployment Hardware},
+  year   = {2026},
+  note   = {arXiv preprint},
+  url    = {https://github.com/JDRanpariya/ball-balancing-on-arc}
+}`;
+---
+
+<section id="bibtex" class="section" aria-labelledby="bibtex-title">
+  <div class="container container--narrow">
+    <span class="section-eyebrow reveal">Citation</span>
+    <h2 id="bibtex-title" class="reveal section-title text-center mb-10">
+      Cite This Work
+    </h2>
+
+    <div class="reveal relative">
+      <div class="border border-[var(--color-border)] bg-[var(--color-surface)] p-6 rounded-lg overflow-x-auto">
+        <pre class="text-xs md:text-sm leading-relaxed font-mono text-[var(--color-text-primary)]" id="bibtex-content">{bibtex}</pre>
+      </div>
+      <button
+        id="copy-bibtex"
+        class="absolute top-3 right-3 px-3 py-1.5 text-xs font-medium border border-[var(--color-border)] bg-[var(--color-surface-alt)] rounded-md hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+      >
+        Copy
+      </button>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  document.getElementById('copy-bibtex').addEventListener('click', function () {
+    var text = document.getElementById('bibtex-content').textContent;
+    navigator.clipboard.writeText(text);
+    this.textContent = 'Copied!';
+    var btn = this;
+    setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+  });
+</script>

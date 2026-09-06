@@ -1,0 +1,103 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'Ball-on-Arc Benchmark: Classical vs Learning-Based Control',
+  description = 'Benchmarking 13 classical and learning-based controllers on a physical ball-on-arc system. Interactive simulation, open dataset, reproducible results.',
+} = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site || 'https://ball-on-arc.netlify.app');
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="canonical" href={canonicalURL.href} />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalURL.href} />
+    <meta property="og:site_name" content="Ball-on-Arc Benchmark" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
+    <title>{title}</title>
+
+    <!-- Three.js import map (must be in <head>, before any module scripts, so the
+         Astro dev toolbar doesn't break it in dev mode) -->
+    <script type="importmap" is:inline>{
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+        "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0/dist/ort.webgpu.min.js"
+      }
+    }</script>
+
+    <!-- Structured Data -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "ScholarlyArticle",
+      "name": "Benchmarking Classical and Learning-based Control Methods on a Real System",
+      "author": [
+        "Jaydeepkumar Ranpariya",
+        "Sandipan Nath",
+        "Alexander Mattick",
+        "Georgios Kontes",
+        "Tobias Feigl",
+        "Christopher Mutschler"
+      ],
+      "url": "https://github.com/JDRanpariya/ball-balancing-on-arc",
+      "datePublished": "2026",
+      "keywords": ["reinforcement learning", "control benchmarking", "sim-to-real", "ball-on-arc", "PLC control"],
+    })} />
+  </head>
+  <body class="min-h-screen antialiased">
+    <!-- Prevent FOUC -->
+    <script is:inline>
+      (function () {
+        var stored = localStorage.getItem('theme');
+        if (stored === 'dark') document.documentElement.classList.add('dark');
+      })();
+    </script>
+
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <slot />
+
+    <!-- Scroll reveal observer -->
+    <script is:inline>
+      document.addEventListener('DOMContentLoaded', function () {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) entry.target.classList.add('visible');
+            });
+          },
+          { threshold: 0.1 }
+        );
+        document.querySelectorAll('.reveal').forEach(function (el) { observer.observe(el); });
+      });
+    </script>
+  </body>
+</html>
